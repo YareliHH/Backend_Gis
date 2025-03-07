@@ -86,14 +86,14 @@ router.post('/verificar-correo', (req, res) => {
         } else {
             // Generar token y crear un registro temporal en la tabla 'usuarios'
             const verificationToken = generateToken();
-            const tokenExpiration = new Date(Date.now() + 900000); // Expira en 15 minutos
-
+            
+            // Usar formato MySQL para la fecha de expiración (15 minutos después)
             const sql = `
                 INSERT INTO usuarios (correo, registro_completo, token_verificacion, token_expiracion, tipo, estado)
-                VALUES (?, 0, ?, ?, 'usuario', 'pendiente')
+                VALUES (?, 0, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), 'usuario', 'pendiente')
             `;
 
-            db.query(sql, [correo, verificationToken, tokenExpiration], (err) => {
+            db.query(sql, [correo, verificationToken], (err) => {
                 if (err) {
                     console.error('Error al crear el registro temporal del usuario:', err);
                     return res.status(500).json({ message: 'Error al crear el registro temporal.' });
@@ -109,17 +109,35 @@ router.post('/verificar-correo', (req, res) => {
 router.post('/verify-token', (req, res) => {
     const { correo, token } = req.body;
 
+    console.log('Verificando token:', { correo, token });
+
     const query = `SELECT * FROM usuarios WHERE correo = ? AND token_verificacion = ? AND token_expiracion > NOW()`;
+    
     db.query(query, [correo, token], (err, results) => {
         if (err) {
             console.error('Error al verificar el token:', err);
             return res.status(500).json({ message: 'Error al verificar el token' });
         }
 
-        if (results.length > 0) {
+        console.log('Resultados de la verificación:', results);
+        
+        if (results && results.length > 0) {
             return res.status(200).json({ valid: true });
         } else {
-            return res.status(400).json({ valid: false, message: 'Token inválido o expirado.' });
+            // Consulta adicional para diagnóstico
+            db.query('SELECT * FROM usuarios WHERE correo = ?', [correo], (err, userResults) => {
+                if (err) {
+                    console.error('Error en consulta de diagnóstico:', err);
+                }
+                
+                console.log('Usuario encontrado:', userResults);
+                
+                return res.status(400).json({ 
+                    valid: false, 
+                    message: 'Token inválido o expirado.',
+                    exists: userResults && userResults.length > 0
+                });
+            });
         }
     });
 });
