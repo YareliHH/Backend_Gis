@@ -57,14 +57,6 @@ router.delete("/ventas/:id", (req, res) => {
     });
 });
 
-module.exports = router;
-
-
-
-
-
-
-
 
 // Endpoint para crear un producto con imágenes (ahora protegido por el middleware)
 router.post("/productos", verifyToken, upload.array("images"), async (req, res) => {
@@ -145,3 +137,11 @@ router.post("/productos", verifyToken, upload.array("images"), async (req, res) 
       res.status(500).json({ message: "Error al crear producto" });
     }
   });
+module.exports = router;
+
+
+
+
+
+
+
