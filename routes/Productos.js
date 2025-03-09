@@ -10,7 +10,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Obtener todos los productos
-router.get('/', (req, res) => {
+router.get('/productosid', (req, res) => {
     db.query('SELECT * FROM productos', (err, results) => {
         if (err) {
             console.error(err);

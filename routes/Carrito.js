@@ -23,7 +23,7 @@ router.post("/agregar", async (req, res) => {
 });
 
 // Obtener los productos del carrito de un usuario
-router.get("/:usuario_id", async (req, res) => {
+router.get("/usuario_id", async (req, res) => {
     const { usuario_id } = req.params;
 
     try {
@@ -40,7 +40,7 @@ router.get("/:usuario_id", async (req, res) => {
 });
 
 // Eliminar un producto del carrito
-router.delete("/eliminar/:usuario_id/:producto_id", async (req, res) => {
+router.delete("/eliminar/usuario_id/producto_id", async (req, res) => {
     const { usuario_id, producto_id } = req.params;
 
     try {
