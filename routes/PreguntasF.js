@@ -16,7 +16,7 @@ router.get('/faqs', (req, res) => {
 });
 
 // Agregar una nueva pregunta frecuente
-router.post('/faqs', (req, res) => {
+router.post('/agregar', (req, res) => {
     const { pregunta, respuesta } = req.body;
 
     if (!pregunta || !respuesta) {
@@ -35,7 +35,7 @@ router.post('/faqs', (req, res) => {
 });
 
 // Actualizar una pregunta frecuente
-router.put('/faqs/:id', (req, res) => {
+router.put('/actualizar', (req, res) => {
     const { id } = req.params;
     const { pregunta, respuesta } = req.body;
 
@@ -55,7 +55,7 @@ router.put('/faqs/:id', (req, res) => {
 });
 
 // Eliminar una pregunta frecuente
-router.delete('/faqs/:id', (req, res) => {
+router.delete('/eliminar', (req, res) => {
     const { id } = req.params;
 
     const sql = `DELETE FROM faqs WHERE id = ?`;
