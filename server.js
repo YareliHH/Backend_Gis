@@ -19,6 +19,9 @@ const productos = require('./routes/Productos.js');
 const acercaDe = require('./routes/AcercaDe.js');
 const ventas = require('./routes/ventas.js');
 const categoria = require('./routes/Categoria.js');
+const color = require ('./routes/Colores.js');
+const tallas = require('./routes/Tallas.js');
+const genero = require ('./routes/Generos.js');
 
 
 const app = express();
@@ -27,10 +30,18 @@ app.use(cookieParser());
 
 // Configuración CORS esencial para cookies
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:3001"
-  ],
+ // origin: [
+ //   "http://localhost:3000",
+ //   "http://localhost:3002"
+ // ],
+ origin: function(origin, callback) {
+  // Si no hay origen (por ejemplo, en el entorno de desarrollo local), permitirlo
+  if (!origin || /^(http:\/\/localhost:\d+)$/.test(origin)) {
+    callback(null, true);
+  } else {
+    callback(new Error('Not allowed by CORS'));
+  }
+},
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -73,6 +84,10 @@ app.use('/api', productos);
 app.use('/api', acercaDe);
 app.use('/api', ventas);
 app.use('/api', categoria);
+app.use('/api', color);
+app.use('/api', tallas);
+app.use('/api', genero);
+
 
 
 // Iniciar el servidor
