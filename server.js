@@ -22,8 +22,6 @@ const categoria = require('./routes/Categoria.js');
 const color = require ('./routes/Colores.js');
 const tallas = require('./routes/Tallas.js');
 const genero = require ('./routes/Generos.js');
-const catalogoproductos = require ('./routes/CatalogoProductos.js');
-const perfil = require ('./routes/Perfil.js');
 
 const app = express();
 
@@ -88,8 +86,7 @@ app.use('/api', categoria);
 app.use('/api', color);
 app.use('/api', tallas);
 app.use('/api', genero);
-app.use('/api', catalogoproductos);
-app.use('/api', perfil);
+
 
 
 // Iniciar el servidor
