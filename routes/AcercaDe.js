@@ -1,21 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const connection = require('../Config/db');
+const db = require('../Config/db');
 
-// Ruta para insertar datos en la tabla acerca_de
-router.post('/acerca_de', (req, res) => {
-  const { nombre, descripcion, mision, vision, valores } = req.body;
-  
-  const query = 'INSERT INTO acerca_de (nombre, descripcion, mision, vision, valores) VALUES (?, ?, ?, ?, ?)';
-  connection.query(query, [nombre, descripcion, mision, vision, valores], (err, results) => {
-    if (err) {
-      console.error('Error en la inserción: ', err);
-      res.status(500).send('Error en la inserción');
-      return;
-    }
-    res.status(200).send('Datos insertados correctamente');
-  });
+// Ruta para obtener datos de la tabla acercaDe
+router.get('/acerca_de', (req, res) => {
+    const sql = 'SELECT nombre, descripcion, mision, vision, valores FROM acercaDe'; // Consulta para obtener los datos
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error('Error al obtener datos:', err);
+            return res.status(500).json({ message: 'Error al obtener datos' });
+        }
+        res.status(200).json(results); // Devuelve los datos en formato JSON
+    });
 });
 
-
 module.exports = router;
+
