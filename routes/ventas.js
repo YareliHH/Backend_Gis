@@ -18,10 +18,10 @@ router.get("/ventas/:id", (req, res) => {
 });
 
 // Registrar una nueva venta
-router.post("/ventas", (req, res) => {
-    const { cantidad, precio_unitario, total, fecha, metodo_pago } = req.body;
-    const query = "INSERT INTO ventas (cantidad, precio_unitario, total, fecha, metodo_pago) VALUES (?, ?, ?, ?, ?)";
-    db.query(query, [cantidad, precio_unitario, total, fecha, metodo_pago], (err, result) => {
+router.post("/registrar", (req, res) => {
+    const { id_producto, cantidad, precio_unitario, total, fecha, metodo_pago } = req.body;
+    const query = "INSERT INTO ventas (id_producto, cantidad, precio_unitario, total, fecha, metodo_pago) VALUES (?, ?, ?, ?, ?, ?)";
+    db.query(query, [id_producto, cantidad, precio_unitario, total, fecha, metodo_pago], (err, result) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -30,12 +30,12 @@ router.post("/ventas", (req, res) => {
     });
 });
 
-//  Actualizar una venta
-router.put("/ventas/:id", (req, res) => {
+// Actualizar una venta
+router.put("/actualizar/:id", (req, res) => {
     const { id } = req.params;
-    const { cantidad, precio_unitario, total, metodo_pago } = req.body;
-    const query = "UPDATE ventas SET cantidad = ?, precio_unitario = ?, total = ?, metodo_pago = ? WHERE id = ?";
-    db.query(query, [cantidad, precio_unitario, total, metodo_pago, id], (err, result) => {
+    const { id_producto, cantidad, precio_unitario, total, metodo_pago } = req.body;
+    const query = "UPDATE ventas SET id_producto = ?, cantidad = ?, precio_unitario = ?, total = ?, metodo_pago = ? WHERE id = ?";
+    db.query(query, [id_producto, cantidad, precio_unitario, total, metodo_pago, id], (err, result) => {
         if (err) {
             res.status(500).json({ error: err.message });
         } else {
@@ -45,7 +45,7 @@ router.put("/ventas/:id", (req, res) => {
 });
 
 // Eliminar una venta
-router.delete("/ventas/:id", (req, res) => {
+router.delete("/eliminar/:id", (req, res) => {
     const { id } = req.params;
     const query = "DELETE FROM ventas WHERE id = ?";
     db.query(query, [id], (err, result) => {
@@ -58,10 +58,3 @@ router.delete("/ventas/:id", (req, res) => {
 });
 
 module.exports = router;
-
-
-
-
-
-
-
