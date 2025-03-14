@@ -33,14 +33,6 @@ app.use(cors({
    "http://localhost:3000",
   "http://localhost:3002" ,"https://gisliveboutique.com"
  ],
- origin: function(origin, callback) {
-  // Si no hay origen (por ejemplo, en el entorno de desarrollo local), permitirlo
-  if (!origin || /^(http:\/\/localhost:\d+)$/.test(origin)) {
-    callback(null, true);
-  } else {
-    callback(new Error('Not allowed by CORS'));
-  }
-},
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
