@@ -50,7 +50,7 @@ app.use(helmet({
       connectSrc: [
         "'self'",
         "http://localhost:3000",
-        "https://backend-gis-1.onrender.com"
+        "http://localhost:3001"
       ]
     }
   }
