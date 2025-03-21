@@ -23,8 +23,8 @@ const color = require ('./routes/Colores.js');
 const tallas = require('./routes/Tallas.js');
 const genero = require ('./routes/Generos.js');
 const carrito = require ('./routes/Carrito.js');
-const detalles_carrito = require ('./routes/DetallesCarrito.js');
 const banner = require ('./routes/Banner.js');
+
 
 const app = express();
 
@@ -82,8 +82,8 @@ app.use('/api', color);
 app.use('/api', tallas);
 app.use('/api', genero);
 app.use('/api', carrito);
-app.use('/api', detalles_carrito);
 app.use('/api', banner);
+
 
 // Iniciar el servidor
 const PORT = process.env.PORT || 3001;

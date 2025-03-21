@@ -14,6 +14,28 @@ cloudinary.config({
     api_key: '621792211413143',
     api_secret: 'Y2SiySDJ_WzYdaN96uoyUdtyt54',
 });
+//  Endpoint para agregar un producto con imagen
+router.post("/agregarproducto", upload.single("imagenes"), (req, res) => {
+  const { nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero } = req.body;
+  const imagenUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+  const query = `
+      INSERT INTO producto (nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero, imagen)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+      query,
+      [nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero, imagenUrl],
+      (err, result) => {
+          if (err) {
+              return res.status(500).json({ error: "Error al agregar el producto", err });
+          }
+          res.json({ message: "Producto agregado con éxito", id: result.insertId });
+      }
+  );
+});
+
 
 // Obtener todos los productos
 router.get("/obtener", (req, res) => {
@@ -177,61 +199,100 @@ router.delete("/eliminar/:id", async (req, res) => {
     }
 });
 
-// Obtener productos del género "Hombre"
-router.get("/obtener/Hombre", (req, res) => {
-    const query = `
-      SELECT 
-        p.id, 
-        p.nombre_producto, 
-        p.descripcion, 
-        p.precio, 
-        p.stock, 
-        p.fecha_creacion, 
-        p.fecha_actualizacion,
-        c.nombre AS categoria, 
-        co.color, 
-        t.talla, 
-        g.genero,
-        (SELECT url FROM imagenes WHERE producto_id = p.id LIMIT 1) AS imagen
-      FROM producto p
-      LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
-      LEFT JOIN color co ON p.id_color = co.id
-      LEFT JOIN tallas t ON p.id_talla = t.id
-      LEFT JOIN genero g ON p.id_genero = g.id
-      WHERE g.genero = "Hombre"
-    `;
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error("Error al obtener productos del género Hombre:", err);
-        return res.status(500).json({ error: "Error al obtener productos" });
-      }
-      res.status(200).json(results);
-    });
+// Obtener todos los productos
+router.get("/productos", (req, res) => {
+  const query = `
+  SELECT
+    p.id,
+    p.nombre_producto,
+    p.descripcion,
+    p.precio,
+    p.stock,
+    p.fecha_creacion,
+    p.fecha_actualizacion,
+    p.id_categoria,
+    p.id_color,
+    p.id_talla,
+    p.id_genero,
+    i.url  -- Obtener la URL de la imagen desde la tabla imagenes
+  FROM
+    u988046079_bdgislive.producto p
+  LEFT JOIN  -- Usamos LEFT JOIN para incluir productos sin imagen
+    u988046079_bdgislive.imagenes i ON p.id = i.producto_id;  -- Relacionamos el producto con su imagen
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error al obtener productos:", err);
+      return res.status(500).json({ error: "Error al obtener productos" });
+    }
+    res.status(200).json(results);
   });
+});
+
+
+// Obtener productos del género "Hombre"
+router.get("/Hombres", (req, res) => {
+  const query = `
+  SELECT
+    p.id,
+    p.nombre_producto,
+    p.descripcion,
+    p.precio,
+    p.stock,
+    p.fecha_creacion,
+    p.fecha_actualizacion,
+    p.id_categoria,
+    p.id_color,
+    p.id_talla,
+    p.id_genero,
+    i.url  -- Obtener la URL de la imagen desde la tabla imagenes
+FROM
+    u988046079_bdgislive.producto p
+JOIN
+    u988046079_bdgislive.genero g ON p.id_genero = g.id
+LEFT JOIN  -- Usamos LEFT JOIN para incluir productos sin imagen
+    u988046079_bdgislive.imagenes i ON p.id = i.producto_id  -- Relacionamos el producto con su imagen
+WHERE
+    g.genero = 'Hombre';
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error al obtener productos del género Hombre:", err);
+      return res.status(500).json({ error: "Error al obtener productos" });
+    }
+    res.status(200).json(results);
+  });
+});
+
   
   // Obtener productos del género "Mujer"
-router.get("/obtener/Mujer", (req, res) => {
+  router.get("/Mujeres", (req, res) => {
     const query = `
-      SELECT 
-        p.id, 
-        p.nombre_producto, 
-        p.descripcion, 
-        p.precio, 
-        p.stock, 
-        p.fecha_creacion, 
-        p.fecha_actualizacion,
-        c.nombre AS categoria, 
-        co.color, 
-        t.talla, 
-        g.genero,
-        (SELECT url FROM imagenes WHERE producto_id = p.id LIMIT 1) AS imagen
-      FROM producto p
-      LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
-      LEFT JOIN color co ON p.id_color = co.id
-      LEFT JOIN tallas t ON p.id_talla = t.id
-      LEFT JOIN genero g ON p.id_genero = g.id
-      WHERE g.genero = "Hombre"
+       SELECT
+    p.id,
+    p.nombre_producto,
+    p.descripcion,
+    p.precio,
+    p.stock,
+    p.fecha_creacion,
+    p.fecha_actualizacion,
+    p.id_categoria,
+    p.id_color,
+    p.id_talla,
+    p.id_genero,
+    i.url  -- Obtener la URL de la imagen desde la tabla imagenes
+FROM
+    u988046079_bdgislive.producto p
+JOIN
+    u988046079_bdgislive.genero g ON p.id_genero = g.id
+LEFT JOIN  -- Usamos LEFT JOIN para incluir productos sin imagen
+    u988046079_bdgislive.imagenes i ON p.id = i.producto_id  -- Relacionamos el producto con su imagen
+WHERE
+    g.genero = 'Mujer';
     `;
+  
     db.query(query, (err, results) => {
       if (err) {
         console.error("Error al obtener productos del género Hombre:", err);
@@ -240,6 +301,37 @@ router.get("/obtener/Mujer", (req, res) => {
       res.status(200).json(results);
     });
   });
+
+ 
+  router.get('/producto-detalle/:id', (req, res) => {
+    const productId = req.params.id;
   
+    // Obtener el producto y la imagen asociada desde la base de datos
+    const query = `
+      SELECT 
+        p.id, 
+        p.nombre_producto, 
+        p.descripcion, 
+        p.precio, 
+        p.stock,
+        i.url -- Obtener la URL de la imagen desde la tabla imagenes
+      FROM 
+        u988046079_bdgislive.producto p
+      LEFT JOIN 
+        u988046079_bdgislive.imagenes i ON p.id = i.producto_id
+      WHERE 
+        p.id = ?;
+    `;
+  
+    db.query(query, [productId], (err, result) => {
+      if (err) {
+        console.error("Error al obtener los detalles del producto:", err);
+        return res.status(500).json({ error: "Error al obtener los detalles del producto" });
+      }
+      res.json(result[0]);  // Devolver el primer producto (ya que debería ser único por id)
+    });
+  });
+  
+
 
 module.exports = router;
