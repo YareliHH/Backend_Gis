@@ -6,22 +6,19 @@ const crypto = require('crypto');
 const axios = require('axios');
 
 
-const LOCK_TIME_MINUTES = 20; // Tiempo de bloqueo en minutos
+const LOCK_TIME_MINUTES = 20;
 
+// Login (mantener tu implementación actual con pequeñas modificaciones)
 router.post('/login', async (req, res) => {
     const { correo, password, captchaValue } = req.body;
-
-    console.log('Datos recibidos del frontend:', { correo, password, captchaValue });
 
     // Validar reCAPTCHA antes de proceder con el login
     try {
         const recaptchaResponse = await axios.post(
             `https://www.google.com/recaptcha/api/siteverify?secret=6LcKwWEqAAAAAN5jWmdv3NLpvl6wSeIRRnm9Omjq&response=${captchaValue}`
         );
-        console.log('Respuesta de reCAPTCHA:', recaptchaResponse.data);
 
         if (!recaptchaResponse.data.success) {
-            console.log('Fallo en la verificación de reCAPTCHA');
             return res.status(400).json({ error: 'Error en la verificación de reCAPTCHA' });
         }
     } catch (error) {
@@ -38,7 +35,6 @@ router.post('/login', async (req, res) => {
         }
 
         if (results.length === 0) {
-            console.log('Usuario no encontrado:', correo);
             return res.status(401).json({ error: 'Usuario no encontrado' });
         }
 
@@ -103,6 +99,7 @@ router.post('/login', async (req, res) => {
                         return res.status(401).json({ error: 'Contraseña incorrecta' });
                     });
                 } else {
+                    // Generar token de sesión y guardarlo en cookie
                     const sessionToken = crypto.randomBytes(64).toString('hex');
 
                     const updateTokenQuery = 'UPDATE usuarios SET cookie = ? WHERE id = ?';
@@ -112,26 +109,26 @@ router.post('/login', async (req, res) => {
                             return res.status(500).json({ error: 'Error al procesar el inicio de sesión' });
                         }
 
-                        ///////////
                         // Registro de la actividad de inicio de sesión
-                            const registroActividadQuery = `
+                        const registroActividadQuery = `
                             INSERT INTO registro_actividades (usuarios_id, actividad, fecha)
                             VALUES (?, 'Inicio de sesión', NOW())
                         `;
                         connection.query(registroActividadQuery, [usuario.id], (err) => {
                             if (err) {
                                 console.error('Error al registrar la actividad:', err);
-                                // No bloqueamos el login, solo informamos en el log
                             }
                         });
-                        res.cookie('cookie', sessionToken, {
-                            httpOnly: true,
-                            secure: process.env.NODE_ENV === 'production', // Asegúrate de que esté en true en producción
-                            sameSite: 'None', // Crucial para cookies entre dominios
+
+                        // Configurar cookie visible (no httpOnly)
+                        res.cookie('auth_cookie', sessionToken, {
+                            httpOnly: false, // Para que sea visible en el navegador
+                            secure: process.env.NODE_ENV === 'production',
+                            sameSite: 'Lax',
                             maxAge: 24 * 60 * 60 * 1000, // 1 día
+                            path: '/'
                         });
                         
-                        console.log('Autenticación exitosa y cookie establecida.');
                         res.json({
                             user: usuario.correo,
                             tipo: usuario.tipo,
@@ -141,6 +138,59 @@ router.post('/login', async (req, res) => {
             });
         });
     });
+});
+
+// Verificar autenticación
+router.get('/verificar-auth', (req, res) => {
+    const token = req.cookies.auth_cookie;
+    
+    if (!token) {
+        return res.json({ autenticado: false });
+    }
+
+    const query = 'SELECT * FROM usuarios WHERE cookie = ?';
+    connection.query(query, [token], (err, results) => {
+        if (err) {
+            console.error('Error al verificar autenticación:', err);
+            return res.status(500).json({ error: 'Error al verificar autenticación' });
+        }
+
+        if (results.length === 0) {
+            return res.json({ autenticado: false });
+        }
+
+        const usuario = results[0];
+        return res.json({
+            autenticado: true,
+            user: usuario.correo,
+            tipo: usuario.tipo
+        });
+    });
+});
+
+// Logout
+router.post('/logout', (req, res) => {
+    const token = req.cookies.auth_cookie;
+    
+    if (token) {
+        // Actualizar BD para eliminar la cookie
+        const query = 'UPDATE usuarios SET cookie = NULL WHERE cookie = ?';
+        connection.query(query, [token], (err) => {
+            if (err) {
+                console.error('Error al cerrar sesión en la base de datos:', err);
+            }
+        });
+    }
+    
+    // Eliminar cookie del navegador
+    res.clearCookie('auth_cookie', {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Lax',
+        path: '/'
+    });
+    
+    res.json({ mensaje: 'Sesión cerrada correctamente' });
 });
 
 module.exports = router;
