@@ -3,7 +3,7 @@ const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 
-const GEMINI_API_KEY = 'AIzaSyBqJpohIy7Btan8s7y7vAShC-JDiVMdvbE';
+const GEMINI_API_KEY = 'AIzaSyDuuGr4M4K3fkv2MatavpWqm1PBnScP4_8';
 
 const limiter = rateLimit({
     windowMs: 60 * 1000,
@@ -67,7 +67,7 @@ router.post('/chat', limiter, async (req, res) => {
 
     try {
         const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${AIzaSyBqJpohIy7Btan8s7y7vAShC-JDiVMdvbE}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
             {
                 contents: [
                     {

@@ -14,6 +14,7 @@ cloudinary.config({
   api_key: '621792211413143',
   api_secret: 'Y2SiySDJ_WzYdaN96uoyUdtyt54',
 });
+
 //  Endpoint para agregar un producto con imagen
 router.post("/agregarproducto", upload.single("imagenes"), (req, res) => {
   const { nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero } = req.body;
