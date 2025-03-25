@@ -26,7 +26,7 @@ const eliminarRegistrosIncompletos = () => {
         if (err) {
             console.error('Error al eliminar registros incompletos:', err);
         } else {
-            console.log( `${result.affectedRows} registros incompletos eliminados.`);
+            console.log(`${result.affectedRows} registros incompletos eliminados.`);
         }
     });
 };
@@ -86,7 +86,7 @@ router.post('/verificar-correo', (req, res) => {
         } else {
             // Generar token y crear un registro temporal en la tabla 'usuarios'
             const verificationToken = generateToken();
-            
+
             // Usar formato MySQL para la fecha de expiración (15 minutos después)
             const sql = `
                 INSERT INTO usuarios (correo, registro_completo, token_verificacion, token_expiracion, tipo, estado)
@@ -109,18 +109,16 @@ router.post('/verificar-correo', (req, res) => {
 router.post('/verify-token', (req, res) => {
     const { correo, token } = req.body;
 
-    console.log('Verificando token:', { correo, token });
 
     const query = `SELECT * FROM usuarios WHERE correo = ? AND token_verificacion = ? AND token_expiracion > NOW()`;
-    
+
     db.query(query, [correo, token], (err, results) => {
         if (err) {
             console.error('Error al verificar el token:', err);
             return res.status(500).json({ message: 'Error al verificar el token' });
         }
 
-        console.log('Resultados de la verificación:', results);
-        
+
         if (results && results.length > 0) {
             return res.status(200).json({ valid: true });
         } else {
@@ -129,11 +127,10 @@ router.post('/verify-token', (req, res) => {
                 if (err) {
                     console.error('Error en consulta de diagnóstico:', err);
                 }
-                
-                console.log('Usuario encontrado:', userResults);
-                
-                return res.status(400).json({ 
-                    valid: false, 
+
+
+                return res.status(400).json({
+                    valid: false,
                     message: 'Token inválido o expirado.',
                     exists: userResults && userResults.length > 0
                 });
@@ -258,95 +255,137 @@ const sendRecoveryEmail = async (correo, verificationToken, res) => {
 // Endpoint para verificar el token de recuperación de contraseña
 router.post('/verify-tokene', (req, res) => {
     const { correo, token } = req.body;
-
+    
+    // Validación de datos de entrada
     if (!correo || !token) {
-        return res.status(400).json({ message: 'Correo y token son requeridos.' });
+        return res.status(400).json({
+            valid: false,
+            message: 'Correo y token son requeridos.'
+        });
     }
-
-    // Consulta para verificar que el token existe y que no ha expirado
-    const query = `
-        SELECT * FROM usuarios 
-        WHERE correo = ? 
-          AND token_verificacion = ? 
-          AND token_expiracion > NOW()
-    `;
-    db.query(query, [correo, token], (err, results) => {
+    
+    // DEBUGGING: Consulta para obtener la información del usuario primero
+    db.query('SELECT * FROM usuarios WHERE correo = ?', [correo], (err, userResults) => {
         if (err) {
-            console.error('Error al verificar el token en la base de datos:', err);
-            return res.status(500).json({ message: 'Error al verificar el token.' });
+            console.error('Error en consulta de usuario:', err);
+            return res.status(500).json({
+                valid: false,
+                message: 'Error del servidor al verificar el token.'
+            });
         }
-
-        // Si no se encuentra un registro, el token es inválido o ha expirado
-        if (results.length === 0) {
-            return res.status(400).json({ valid: false, message: 'Token inválido o expirado.' });
+        
+        if (!userResults || userResults.length === 0) {
+            return res.status(400).json({
+                valid: false,
+                message: 'Correo no encontrado.'
+            });
         }
+        
+        const user = userResults[0];
 
-        // Si el token es válido, retornar una respuesta exitosa
-        res.status(200).json({ valid: true, message: 'Token verificado correctamente.' });
+        // Comparar los tokens directamente
+        if (user.token_verificacion === token) {
+            // Verificar expiración
+            if (new Date() <= new Date(user.token_expiracion)) {
+                return res.status(200).json({
+                    valid: true,
+                    message: 'Token verificado correctamente.'
+                });
+            } else {
+                return res.status(400).json({
+                    valid: false,
+                    message: 'El token ha expirado. Por favor solicita un nuevo código.'
+                });
+            }
+        } else {
+            return res.status(400).json({
+                valid: false,
+                message: 'Token inválido. Por favor verifica e intenta de nuevo.'
+            });
+        }
     });
 });
 
 // Endpoint para restablecer la contraseña
-router.post('/resetPassword', async (req, res) => {
-    const { token, newPassword } = req.body;
+router.post('/resetPassword', (req, res) => {
+    const { token, newPassword, correo } = req.body;
 
-    if (!token || !newPassword) {
-        return res.status(400).json({ message: 'Token y nueva contraseña son requeridos.' });
+    // Validación de entrada
+    if (!token || !newPassword || !correo) {
+        return res.status(400).json({ message: 'Token, correo y nueva contraseña son requeridos.' });
     }
 
-    try {
-        // Verificar si el token es válido y no ha expirado
-        const query = `
-            SELECT * FROM usuarios 
-            WHERE token_verificacion = ? 
-              AND token_expiracion > NOW()
-              AND registro_completo = 1
-        `;
-        db.query(query, [token], async (err, results) => {
-            if (err) {
-                console.error('Error al verificar el token:', err);
-                return res.status(500).json({ message: 'Error al verificar el token.' });
-            }
 
-            // Si no se encuentra el token, es inválido o ha expirado
-            if (results.length === 0) {
-                return res.status(400).json({ message: 'El token es inválido o ha expirado.' });
-            }
+    // Modificamos la consulta para obtener primero el usuario y luego verificar el token manualmente
+    const queryUsuario = `
+        SELECT * FROM usuarios 
+        WHERE correo = ?
+    `;
 
-            const userId = results[0].id;
+    db.query(queryUsuario, [correo], (err, results) => {
+        if (err) {
+            console.error('Error al buscar usuario en resetPassword:', err);
+            return res.status(500).json({ message: 'Error al verificar el usuario.' });
+        }
 
-            // Hashear la nueva contraseña
-            const hashedPassword = await bcrypt.hash(newPassword, 10);
+        // Si no se encuentra el usuario
+        if (results.length === 0) {
+            return res.status(400).json({ message: 'El usuario no existe.' });
+        }
 
-            // Actualizar la contraseña del usuario e invalidar el token
-            const updateQuery = `
-                UPDATE usuarios 
-                SET password = ?, token_verificacion = NULL, token_expiracion = NULL
-                WHERE id = ?
-            `;
-            db.query(updateQuery, [hashedPassword, userId], (updateErr) => {
-                if (updateErr) {
-                    console.error('Error al actualizar la contraseña:', updateErr);
-                    return res.status(500).json({ message: 'Error al actualizar la contraseña.' });
-                }
-                // Registrar la actividad de cambio de contraseña
-                const registroActividadQuery = `
-                    INSERT INTO registro_actividades (usuarios_id, actividad, fecha)
-                    VALUES (?, 'Cambio de contraseña', NOW())
+        const usuario = results[0];
+        const userId = usuario.id;
+
+
+        // Verificar manualmente si el token coincide y no ha expirado
+        if (token !== usuario.token_verificacion) {
+            return res.status(400).json({ message: 'Token inválido.' });
+        }
+
+        // No verificamos expiración si hay algún problema con la fecha
+        if (usuario.token_expiracion && new Date() > new Date(usuario.token_expiracion)) {
+            return res.status(400).json({ message: 'El token ha expirado.' });
+        }
+
+        
+        // Hashear la nueva contraseña
+        bcrypt.hash(newPassword, 10)
+            .then(hashedPassword => {
+                
+                // Actualizar la contraseña del usuario e invalidar el token
+                const updateQuery = `
+                    UPDATE usuarios 
+                    SET password = ?, token_verificacion = NULL, token_expiracion = NULL
+                    WHERE id = ?
                 `;
-                db.query(registroActividadQuery, [userId], (registroErr) => {
-                    if (registroErr) {
-                        console.error('Error al registrar la actividad de cambio de contraseña:', registroErr);
-                        // No bloqueamos el flujo principal, pero registramos el error en logs.
+                
+                db.query(updateQuery, [hashedPassword, userId], (updateErr) => {
+                    if (updateErr) {
+                        console.error('Error al actualizar la contraseña:', updateErr);
+                        return res.status(500).json({ message: 'Error al actualizar la contraseña.' });
                     }
+                    
+                    
+                    // Responder éxito antes de registrar actividad
+                    res.status(200).json({ message: 'Contraseña actualizada correctamente.' });
+                    
+                    // Registrar la actividad de cambio de contraseña (no bloqueante)
+                    const registroActividadQuery = `
+                        INSERT INTO registro_actividades (usuarios_id, actividad, fecha)
+                        VALUES (?, 'Cambio de contraseña', NOW())
+                    `;
+                    
+                    db.query(registroActividadQuery, [userId], (registroErr) => {
+                        if (registroErr) {
+                            console.error('Error al registrar la actividad de cambio de contraseña:', registroErr);
+                        }
+                    });
                 });
-                res.status(200).json({ message: 'Contraseña actualizada correctamente.' });
+            })
+            .catch(hashError => {
+                console.error('Error al generar hash de contraseña:', hashError);
+                return res.status(500).json({ message: 'Error al procesar la nueva contraseña.' });
             });
-        });
-    } catch (error) {
-        console.error('Error en el proceso de restablecimiento de contraseña:', error);
-        res.status(500).json({ message: 'Error al procesar la solicitud de restablecimiento de contraseña.' });
-    }
+    });
 });
-
 module.exports = router;
