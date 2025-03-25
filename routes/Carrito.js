@@ -2,23 +2,45 @@ const express = require("express");
 const router = express.Router();
 const db = require('../Config/db'); 
 
-// Agregar un producto al carrito
+
+// Agregar un producto al carrito o actualizar la cantidad si ya existe
 router.post("/agregar", async (req, res) => {
-    const { usuario_id, producto_id } = req.body;
+    const { usuario_id, producto_id, cantidad, precio } = req.body;
 
     try {
-        // Verificar si el producto ya está en el carrito
-        const [existe] = await db.query("SELECT * FROM carrito WHERE usuario_id = ? AND producto_id = ?", [usuario_id, producto_id]);
+        if (!usuario_id || !producto_id || !cantidad || cantidad <= 0 || !precio) {
+            return res.status(400).json({ message: "Datos inválidos" });
+        }
 
-        if (existe.length === 0) {
-            // Insertar solo si el producto no está en el carrito
-            await db.query("INSERT INTO carrito (usuario_id, producto_id) VALUES (?, ?)", [usuario_id, producto_id]);
-            res.status(200).json({ message: "Producto agregado al carrito" });
+        const subtotal = cantidad * precio;
+
+        // Verificar si el producto ya está en el carrito
+        const [existe] = await db.query(
+            "SELECT cantidad FROM carrito WHERE usuario_id = ? AND producto_id = ?",
+            [usuario_id, producto_id]
+        );
+
+        if (existe.length > 0) {
+            // Si ya está en el carrito, actualizar cantidad y subtotal
+            await db.query(
+                `UPDATE carrito 
+                 SET cantidad = cantidad + ?, subtotal = subtotal + ?, fecha_actualizacion = CURRENT_TIMESTAMP 
+                 WHERE usuario_id = ? AND producto_id = ?`,
+                [cantidad, subtotal, usuario_id, producto_id]
+            );
+            res.status(200).json({ message: "Cantidad y subtotal actualizados en el carrito" });
         } else {
-            res.status(400).json({ message: "El producto ya está en el carrito" });
+            // Si no existe, insertarlo
+            await db.query(
+                `INSERT INTO carrito (usuario_id, producto_id, cantidad, precio, subtotal, fecha_creacion, fecha_actualizacion) 
+                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                [usuario_id, producto_id, cantidad, precio_unitario, subtotal]
+            );
+            res.status(201).json({ message: "Producto agregado al carrito" });
         }
     } catch (error) {
-        res.status(500).json({ error: "Error al agregar el producto al carrito" });
+        console.error("Error al agregar el producto:", error);
+        res.status(500).json({ error: "Error interno del servidor" });
     }
 });
 
@@ -28,13 +50,15 @@ router.get("/:usuario_id", async (req, res) => {
 
     try {
         const [carrito] = await db.query(`
-            SELECT c.producto_id, p.nombre, c.fecha_creacion, c.fecha_actualizacion
+            SELECT c.producto_id, p.nombre, c.cantidad, c.precio, c.subtotal, 
+                   c.fecha_creacion, c.fecha_actualizacion
             FROM carrito c
             INNER JOIN productos p ON c.producto_id = p.id
             WHERE c.usuario_id = ?`, [usuario_id]);
 
         res.status(200).json(carrito);
     } catch (error) {
+        console.error("Error al obtener el carrito:", error);
         res.status(500).json({ error: "Error al obtener el carrito" });
     }
 });
@@ -47,6 +71,7 @@ router.delete("/eliminar/:usuario_id/:producto_id", async (req, res) => {
         await db.query("DELETE FROM carrito WHERE usuario_id = ? AND producto_id = ?", [usuario_id, producto_id]);
         res.status(200).json({ message: "Producto eliminado del carrito" });
     } catch (error) {
+        console.error("Error al eliminar el producto:", error);
         res.status(500).json({ error: "Error al eliminar el producto" });
     }
 });
@@ -59,6 +84,7 @@ router.delete("/vaciar/:usuario_id", async (req, res) => {
         await db.query("DELETE FROM carrito WHERE usuario_id = ?", [usuario_id]);
         res.status(200).json({ message: "Carrito vaciado correctamente" });
     } catch (error) {
+        console.error("Error al vaciar el carrito:", error);
         res.status(500).json({ error: "Error al vaciar el carrito" });
     }
 });
