@@ -2,91 +2,80 @@ const express = require("express");
 const router = express.Router();
 const db = require('../Config/db'); 
 
+// Agregar un producto al carrito
+app.post('/carrito', (req, res) => {
+    const { usuario_id, producto_id, cantidad } = req.body;
 
-// Agregar un producto al carrito o actualizar la cantidad si ya existe
-router.post("/agregar", async (req, res) => {
-    const { usuario_id, producto_id, cantidad, precio_unitario } = req.body;
-
-    try {
-        if (!usuario_id || !producto_id || !cantidad || cantidad <= 0 || !precio_unitario) {
-            return res.status(400).json({ message: "Datos inválidos" });
-        }
-
-        const subtotal = cantidad * precio_unitario;
-
-        // Verificar si el producto ya está en el carrito
-        const [existe] = await db.query(
-            "SELECT cantidad FROM carrito WHERE usuario_id = ? AND producto_id = ?",
-            [usuario_id, producto_id]
-        );
-
-        if (existe.length > 0) {
-            // Si ya está en el carrito, actualizar cantidad y subtotal
-            await db.query(
-                `UPDATE carrito 
-                 SET cantidad = cantidad + ?, subtotal = subtotal + ?, fecha_actualizacion = CURRENT_TIMESTAMP 
-                 WHERE usuario_id = ? AND producto_id = ?`,
-                [cantidad, subtotal, usuario_id, producto_id]
-            );
-            res.status(200).json({ message: "Cantidad y subtotal actualizados en el carrito" });
-        } else {
-            // Si no existe, insertarlo
-            await db.query(
-                `INSERT INTO carrito (usuario_id, producto_id, cantidad, precio_unitario, subtotal, fecha_creacion, fecha_actualizacion) 
-                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-                [usuario_id, producto_id, cantidad, precio_unitario, subtotal]
-            );
-            res.status(201).json({ message: "Producto agregado al carrito" });
-        }
-    } catch (error) {
-        console.error("Error al agregar el producto:", error);
-        res.status(500).json({ error: "Error interno del servidor" });
+    if (!usuario_id || !producto_id || !cantidad) {
+        return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
+
+    db.query('SELECT preciot FROM producto WHERE id = ?', [producto_id], (err, results) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener precio' });
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+
+        const precio = results[0].preciot;
+        const subtotal = precio * cantidad;
+
+        db.query('INSERT INTO carrito (usuario_id, producto_id, cantidad, subtotal, preciot, estado) VALUES (?, ?, ?, ?, ?, "activo")', 
+        [usuario_id, producto_id, cantidad, subtotal, precio], (err) => {
+            if (err) return res.status(500).json({ error: 'Error al agregar al carrito' });
+            res.json({ mensaje: 'Producto agregado al carrito' });
+        });
+    });
 });
 
-// Obtener los productos del carrito de un usuario
-router.get("/:usuario_id", async (req, res) => {
+// Obtener el carrito de un usuario
+app.get('/carrito/:usuario_id', (req, res) => {
     const { usuario_id } = req.params;
 
-    try {
-        const [carrito] = await db.query(`
-            SELECT c.producto_id, p.nombre, c.cantidad, c.precio_unitario, c.subtotal, 
-                   c.fecha_creacion, c.fecha_actualizacion
-            FROM carrito c
-            INNER JOIN productos p ON c.producto_id = p.id
-            WHERE c.usuario_id = ?`, [usuario_id]);
+    db.query('SELECT * FROM carrito WHERE usuario_id = ? AND estado = "activo"', [usuario_id], (err, results) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener carrito' });
+        res.json(results);
+    });
+});
 
-        res.status(200).json(carrito);
-    } catch (error) {
-        console.error("Error al obtener el carrito:", error);
-        res.status(500).json({ error: "Error al obtener el carrito" });
+// Actualizar cantidad de un producto en el carrito
+app.put('/carrito', (req, res) => {
+    const { usuario_id, producto_id, cantidad } = req.body;
+
+    if (!usuario_id || !producto_id || !cantidad) {
+        return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
+
+    db.query('SELECT preciot FROM producto WHERE id = ?', [producto_id], (err, results) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener precio' });
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+
+        const precio = results[0].preciot;
+        const subtotal = precio * cantidad;
+
+        db.query('UPDATE carrito SET cantidad = ?, subtotal = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE usuario_id = ? AND producto_id = ?',
+        [cantidad, subtotal, usuario_id, producto_id], (err) => {
+            if (err) return res.status(500).json({ error: 'Error al actualizar el carrito' });
+            res.json({ mensaje: 'Carrito actualizado' });
+        });
+    });
 });
 
 // Eliminar un producto del carrito
-router.delete("/eliminar/:usuario_id/:producto_id", async (req, res) => {
-    const { usuario_id, producto_id } = req.params;
+app.delete('/carrito', (req, res) => {
+    const { usuario_id, producto_id } = req.body;
 
-    try {
-        await db.query("DELETE FROM carrito WHERE usuario_id = ? AND producto_id = ?", [usuario_id, producto_id]);
-        res.status(200).json({ message: "Producto eliminado del carrito" });
-    } catch (error) {
-        console.error("Error al eliminar el producto:", error);
-        res.status(500).json({ error: "Error al eliminar el producto" });
+    if (!usuario_id || !producto_id) {
+        return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
-});
 
-// Vaciar el carrito de un usuario
-router.delete("/vaciar/:usuario_id", async (req, res) => {
-    const { usuario_id } = req.params;
-
-    try {
-        await db.query("DELETE FROM carrito WHERE usuario_id = ?", [usuario_id]);
-        res.status(200).json({ message: "Carrito vaciado correctamente" });
-    } catch (error) {
-        console.error("Error al vaciar el carrito:", error);
-        res.status(500).json({ error: "Error al vaciar el carrito" });
-    }
+    db.query('DELETE FROM carrito WHERE usuario_id = ? AND producto_id = ?', [usuario_id, producto_id], (err) => {
+        if (err) return res.status(500).json({ error: 'Error al eliminar producto del carrito' });
+        res.json({ mensaje: 'Producto eliminado del carrito' });
+    });
 });
 
 module.exports = router;
