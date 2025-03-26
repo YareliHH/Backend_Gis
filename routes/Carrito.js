@@ -5,14 +5,14 @@ const db = require('../Config/db');
 
 // Agregar un producto al carrito o actualizar la cantidad si ya existe
 router.post("/agregar", async (req, res) => {
-    const { usuario_id, producto_id, cantidad, precio } = req.body;
+    const { usuario_id, producto_id, cantidad, precio_unitario } = req.body;
 
     try {
-        if (!usuario_id || !producto_id || !cantidad || cantidad <= 0 || !precio) {
+        if (!usuario_id || !producto_id || !cantidad || cantidad <= 0 || !precio_unitario) {
             return res.status(400).json({ message: "Datos inválidos" });
         }
 
-        const subtotal = cantidad * precio;
+        const subtotal = cantidad * precio_unitario;
 
         // Verificar si el producto ya está en el carrito
         const [existe] = await db.query(
@@ -32,7 +32,7 @@ router.post("/agregar", async (req, res) => {
         } else {
             // Si no existe, insertarlo
             await db.query(
-                `INSERT INTO carrito (usuario_id, producto_id, cantidad, precio, subtotal, fecha_creacion, fecha_actualizacion) 
+                `INSERT INTO carrito (usuario_id, producto_id, cantidad, precio_unitario, subtotal, fecha_creacion, fecha_actualizacion) 
                  VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
                 [usuario_id, producto_id, cantidad, precio_unitario, subtotal]
             );
@@ -50,7 +50,7 @@ router.get("/:usuario_id", async (req, res) => {
 
     try {
         const [carrito] = await db.query(`
-            SELECT c.producto_id, p.nombre, c.cantidad, c.precio, c.subtotal, 
+            SELECT c.producto_id, p.nombre, c.cantidad, c.precio_unitario, c.subtotal, 
                    c.fecha_creacion, c.fecha_actualizacion
             FROM carrito c
             INNER JOIN productos p ON c.producto_id = p.id

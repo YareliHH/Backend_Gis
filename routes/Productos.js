@@ -16,27 +16,98 @@ cloudinary.config({
 });
 
 //  Endpoint para agregar un producto con imagen
-router.post("/agregarproducto", upload.single("imagenes"), (req, res) => {
-  const { nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero } = req.body;
-  const imagenUrl = req.file ? `/uploads/${req.file.filename}` : null;
+router.post("/agregarProductos", upload.single("imagen"), async (req, res) => {
+  try {
+    console.log("===================== DEPURACIÓN DE AGREGAR PRODUCTO =====================");
+    console.log("Headers recibidos:", req.headers);
+    console.log("Cuerpo de la solicitud (req.body):", req.body);
+    console.log("Archivo recibido (req.file):", req.file);
 
-  const query = `
-      INSERT INTO producto (nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero, imagen)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+    const { nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero } = req.body;
 
-  db.query(
-    query,
-    [nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero, imagenUrl],
-    (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: "Error al agregar el producto", err });
-      }
-      res.json({ message: "Producto agregado con éxito", id: result.insertId });
+    // Subir imagen a Cloudinary si existe
+    let imagenUrl = null;
+    if (req.file) {
+      const uploadResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "productos" },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
+        streamifier.createReadStream(req.file.buffer).pipe(stream);
+      });
+
+      imagenUrl = uploadResult.secure_url;
     }
-  );
-});
 
+    console.log("URL de imagen generada:", imagenUrl);
+    console.log("===========================================================");
+
+    // Insertar producto
+    const queryProducto = `
+      INSERT INTO producto (nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+      queryProducto,
+      [nombre_producto, descripcion, Number(precio), Number(stock),
+        Number(id_categoria), Number(id_color), Number(id_talla),
+        Number(id_genero)],
+      (err, resultProducto) => {
+        if (err) {
+          console.error("Error en inserción de producto:", err);
+          return res.status(500).json({
+            error: "Error al agregar el producto",
+            details: err.message
+          });
+        }
+
+        // Si hay imagen, insertar en la tabla de imágenes
+        if (imagenUrl) {
+          const queryImagen = `
+            INSERT INTO imagenes (producto_id, url, creado_en)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+          `;
+
+          db.query(
+            queryImagen,
+            [resultProducto.insertId, imagenUrl],
+            (err, resultImagen) => {
+              if (err) {
+                console.error("Error en inserción de imagen:", err);
+                return res.status(500).json({
+                  error: "Error al agregar la imagen",
+                  details: err.message
+                });
+              }
+
+              res.json({
+                message: "Producto e imagen agregados con éxito",
+                producto_id: resultProducto.insertId,
+                imagen_id: resultImagen.insertId,
+                imagen_url: imagenUrl
+              });
+            }
+          );
+        } else {
+          res.json({
+            message: "Producto agregado con éxito",
+            producto_id: resultProducto.insertId
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error general:", error);
+    res.status(500).json({
+      error: "Error al procesar la solicitud",
+      details: error.message
+    });
+  }
+});
 
 // Obtener todos los productos
 router.get("/obtener", (req, res) => {
@@ -88,59 +159,75 @@ router.get("/obtener/:id", (req, res) => {
 });
 
 // Agregar un nuevo producto con imágenes en Cloudinary
-router.put("/actualizar/:id", upload.array("imagenes", 5), async (req, res) => {
+router.put("/actualizar/:id", upload.single("imagen"), (req, res) => {
   const { id } = req.params;
-  const { nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero } = req.body;
+  const {
+    nombre_producto,
+    descripcion,
+    precio,
+    stock,
+    id_categoria,
+    id_color,
+    id_talla,
+    id_genero
+  } = req.body;
 
-  // Actualizar la información del producto
+  // Update product information
+  const updateQuery = `
+    UPDATE producto
+    SET nombre_producto = ?, descripcion = ?, precio = ?, stock = ?, 
+        id_categoria = ?, id_color = ?, id_talla = ?, id_genero = ?, 
+        fecha_actualizacion = CURRENT_TIMESTAMP 
+    WHERE id = ?`;
+
   db.query(
-    `
-      UPDATE producto
-      SET nombre_producto = ?, descripcion = ?, precio = ?, stock = ?, 
-          id_categoria = ?, id_color = ?, id_talla = ?, id_genero = ?, 
-          fecha_actualizacion = CURRENT_TIMESTAMP 
-      WHERE id = ?
-      `,
+    updateQuery,
     [nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero, id],
-    async (err) => {
-      if (err) {
-        console.error("Error al actualizar producto:", err);
+    (updateErr) => {
+      if (updateErr) {
+        console.error("Error al actualizar producto:", updateErr);
         return res.status(500).json({ error: "Error al actualizar producto" });
       }
 
-      // Si se envían nuevas imágenes, procesarlas
-      if (req.files && req.files.length > 0) {
-        // Opcional: eliminar las imágenes anteriores de la BD (y de Cloudinary si lo deseas)
-        await new Promise((resolve, reject) => {
-          db.query("DELETE FROM imagenes WHERE producto_id = ?", [id], (err) => {
-            if (err) return reject(err);
-            resolve();
-          });
-        });
+      // If an image is uploaded
+      if (req.file) {
+        // Delete previous images for this product
+        db.query("DELETE FROM imagenes WHERE producto_id = ?", [id], (deleteErr) => {
+          if (deleteErr) {
+            console.error("Error al eliminar imágenes anteriores:", deleteErr);
+          }
 
-        // Procesar y guardar cada nueva imagen
-        for (const file of req.files) {
-          const uploadResult = await new Promise((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-              { folder: "productos" },
-              (error, result) => {
-                if (error) return reject(error);
-                resolve(result);
+          // Upload new image to Cloudinary
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: "productos" },
+            (cloudinaryErr, uploadResult) => {
+              if (cloudinaryErr) {
+                console.error("Error al subir imagen a Cloudinary:", cloudinaryErr);
+                return res.status(500).json({ error: "Error al subir imagen" });
               }
-            );
-            streamifier.createReadStream(file.buffer).pipe(stream);
-          });
 
-          await new Promise((resolve, reject) => {
-            const query = "INSERT INTO imagenes (producto_id, url) VALUES (?, ?)";
-            db.query(query, [id, uploadResult.secure_url], (err) => {
-              if (err) return reject(err);
-              resolve();
-            });
-          });
-        }
+              // Save image URL to database
+              db.query(
+                "INSERT INTO imagenes (producto_id, url) VALUES (?, ?)",
+                [id, uploadResult.secure_url],
+                (insertErr) => {
+                  if (insertErr) {
+                    console.error("Error al guardar URL de imagen:", insertErr);
+                    return res.status(500).json({ error: "Error al guardar imagen" });
+                  }
+
+                  res.json({ message: "Producto actualizado correctamente" });
+                }
+              );
+            }
+          );
+
+          streamifier.createReadStream(req.file.buffer).pipe(stream);
+        });
+      } else {
+        // No image uploaded
+        res.json({ message: "Producto actualizado correctamente" });
       }
-      res.json({ message: "Producto actualizado correctamente" });
     }
   );
 });
