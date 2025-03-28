@@ -128,7 +128,7 @@ router.post('/login', async (req, res) => {
                             maxAge: 24 * 60 * 60 * 1000, // 1 día
                             path: '/'
                         });
-                        
+
                         res.json({
                             user: usuario.correo,
                             tipo: usuario.tipo,
@@ -143,7 +143,7 @@ router.post('/login', async (req, res) => {
 // Verificar autenticación
 router.get('/verificar-auth', (req, res) => {
     const token = req.cookies.auth_cookie;
-    
+
     if (!token) {
         return res.json({ autenticado: false });
     }
@@ -171,7 +171,7 @@ router.get('/verificar-auth', (req, res) => {
 // Logout
 router.post('/logout', (req, res) => {
     const token = req.cookies.auth_cookie;
-    
+
     if (token) {
         // Actualizar BD para eliminar la cookie
         const query = 'UPDATE usuarios SET cookie = NULL WHERE cookie = ?';
@@ -181,7 +181,7 @@ router.post('/logout', (req, res) => {
             }
         });
     }
-    
+
     // Eliminar cookie del navegador
     res.clearCookie('auth_cookie', {
         httpOnly: false,
@@ -189,8 +189,193 @@ router.post('/logout', (req, res) => {
         sameSite: 'Lax',
         path: '/'
     });
-    
+
     res.json({ mensaje: 'Sesión cerrada correctamente' });
 });
+
+// GET - Obtener datos del perfil del usuario
+router.get('/perfil', (req, res) => {
+    const token = req.cookies.auth_cookie;
+
+    if (!token) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    const query = `
+      SELECT id, nombre, apellido_paterno, apellido_materno, correo, 
+             telefono, tipo, estado, fecha_creacion
+      FROM usuarios 
+      WHERE cookie = ?
+    `;
+
+    connection.query(query, [token], (err, results) => {
+        if (err) {
+            console.error('Error al obtener perfil:', err);
+            return res.status(500).json({ error: 'Error al obtener datos del perfil' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        // No enviar campos sensibles como password
+        const usuario = results[0];
+        res.json(usuario);
+    });
+});
+
+// PUT - Actualizar datos del perfil del usuario
+router.put('/perfil', (req, res) => {
+    const token = req.cookies.auth_cookie;
+    const { nombre, apellido_paterno, apellido_materno, telefono, correo } = req.body;
+
+    if (!token) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    // Primero verificamos el usuario actual
+    const findUserQuery = 'SELECT id FROM usuarios WHERE cookie = ?';
+    connection.query(findUserQuery, [token], (err, results) => {
+        if (err) {
+            console.error('Error al buscar usuario:', err);
+            return res.status(500).json({ error: 'Error en la base de datos' });
+        }
+
+        if (results.length === 0) {
+            return res.status(401).json({ error: 'Usuario no encontrado' });
+        }
+
+        const userId = results[0].id;
+
+        // Actualizamos los datos
+        const updateQuery = `
+        UPDATE usuarios 
+        SET nombre = ?, 
+            apellido_paterno = ?, 
+            apellido_materno = ?, 
+            telefono = ?,
+            correo = ?
+        WHERE id = ?
+      `;
+
+        connection.query(
+            updateQuery,
+            [nombre, apellido_paterno, apellido_materno, telefono, correo, userId],
+            (updateErr) => {
+                if (updateErr) {
+                    console.error('Error al actualizar perfil:', updateErr);
+                    return res.status(500).json({ error: 'Error al actualizar el perfil' });
+                }
+
+                // Registro de actividad
+                const activityQuery = `
+            INSERT INTO registro_actividades (usuarios_id, actividad, fecha)
+            VALUES (?, 'Actualización de perfil', NOW())
+          `;
+
+                connection.query(activityQuery, [userId], (actErr) => {
+                    if (actErr) {
+                        console.error('Error al registrar actividad:', actErr);
+                    }
+                });
+
+                res.json({ message: 'Perfil actualizado correctamente' });
+            }
+        );
+    });
+});
+
+// POST - Cambiar contraseña del usuario
+router.post('/cambiar-password', (req, res) => {
+    const token = req.cookies.auth_cookie;
+    const { currentPassword, newPassword } = req.body;
+  
+    if (!token) {
+      return res.status(401).json({ error: 'No autenticado' });
+    }
+  
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
+    }
+  
+    // Primero obtenemos el usuario actual con su contraseña para verificar
+    const findUserQuery = 'SELECT id, password FROM usuarios WHERE cookie = ?';
+    connection.query(findUserQuery, [token], (err, results) => {
+      if (err) {
+        console.error('Error al buscar usuario:', err);
+        return res.status(500).json({ error: 'Error en la base de datos' });
+      }
+  
+      if (results.length === 0) {
+        return res.status(401).json({ error: 'Usuario no encontrado' });
+      }
+  
+      const usuario = results[0];
+      
+      // Verificar la contraseña actual
+      bcrypt.compare(currentPassword, usuario.password, (compareErr, isMatch) => {
+        if (compareErr) {
+          console.error('Error al comparar contraseñas:', compareErr);
+          return res.status(500).json({ error: 'Error al verificar contraseña' });
+        }
+  
+        if (!isMatch) {
+          return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+        }
+  
+        // Si la contraseña actual es correcta, encriptamos la nueva
+        bcrypt.hash(newPassword, 10, (hashErr, hashedPassword) => {
+          if (hashErr) {
+            console.error('Error al hashear la nueva contraseña:', hashErr);
+            return res.status(500).json({ error: 'Error al procesar la nueva contraseña' });
+          }
+  
+          // Actualizamos la contraseña en la base de datos
+          const updateQuery = 'UPDATE usuarios SET password = ? WHERE id = ?';
+          connection.query(updateQuery, [hashedPassword, usuario.id], (updateErr) => {
+            if (updateErr) {
+              console.error('Error al actualizar la contraseña:', updateErr);
+              return res.status(500).json({ error: 'Error al actualizar la contraseña' });
+            }
+  
+            // Registro de actividad
+            const activityQuery = `
+              INSERT INTO registro_actividades (usuarios_id, actividad, fecha)
+              VALUES (?, 'Cambio de contraseña', NOW())
+            `;
+            
+            connection.query(activityQuery, [usuario.id], (actErr) => {
+              if (actErr) {
+                console.error('Error al registrar actividad:', actErr);
+                // No retornamos error aquí porque el cambio ya se realizó
+              }
+            });
+  
+            // Opcional: Generar un nuevo token de sesión para mayor seguridad
+            const sessionToken = crypto.randomBytes(64).toString('hex');
+            const updateTokenQuery = 'UPDATE usuarios SET cookie = ? WHERE id = ?';
+            
+            connection.query(updateTokenQuery, [sessionToken, usuario.id], (tokenErr) => {
+              if (tokenErr) {
+                console.error('Error al actualizar token:', tokenErr);
+                // No retornamos error aquí porque el cambio ya se realizó
+              }
+              
+              // Actualizar la cookie del navegador
+              res.cookie('auth_cookie', sessionToken, {
+                httpOnly: false,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Lax',
+                maxAge: 24 * 60 * 60 * 1000, // 1 día
+                path: '/'
+              });
+              
+              res.json({ message: 'Contraseña actualizada correctamente' });
+            });
+          });
+        });
+      });
+    });
+  });
 
 module.exports = router;
