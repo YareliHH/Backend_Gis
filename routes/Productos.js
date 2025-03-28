@@ -487,34 +487,169 @@ WHERE
   });
 });
 
-router.get('/producto-detalle/:id', (req, res) => {
-  const productId = req.params.id;
-
-  // Obtener el producto y la imagen asociada desde la base de datos
+// Obtener todos los productos
+router.get("/productos", (req, res) => {
   const query = `
-      SELECT 
-        p.id, 
-        p.nombre_producto, 
-        p.descripcion, 
-        p.precio, 
-        p.stock,
-        i.url -- Obtener la URL de la imagen desde la tabla imagenes
-      FROM 
-        u988046079_bdgislive.producto p
-      LEFT JOIN 
-        u988046079_bdgislive.imagenes i ON p.id = i.producto_id
-      WHERE 
-        p.id = ?;
-    `;
+  SELECT
+    p.id,
+    p.nombre_producto,
+    p.descripcion,
+    p.precio,
+    p.stock,
+    p.fecha_creacion,
+    p.fecha_actualizacion,
+    p.id_categoria,
+    p.id_color,
+    p.id_talla,
+    p.id_genero,
+    i.url  -- Obtener la URL de la imagen desde la tabla imagenes
+  FROM
+    u988046079_bdgislive.producto p
+  LEFT JOIN  -- Usamos LEFT JOIN para incluir productos sin imagen
+    u988046079_bdgislive.imagenes i ON p.id = i.producto_id;  -- Relacionamos el producto con su imagen
+  `;
 
-  db.query(query, [productId], (err, result) => {
+  db.query(query, (err, results) => {
     if (err) {
-      console.error("Error al obtener los detalles del producto:", err);
-      return res.status(500).json({ error: "Error al obtener los detalles del producto" });
+      console.error("Error al obtener productos:", err);
+      return res.status(500).json({ error: "Error al obtener productos" });
     }
-    res.json(result[0]);  // Devolver el primer producto (ya que debería ser único por id)
+    res.status(200).json(results);
   });
 });
 
+// Modificación del endpoint para producto-detalle
+router.get('/producto-detalle/:id', (req, res) => {
+  const productId = req.params.id;
+
+  // Función para promisificar la consulta
+  const queryAsync = (sql, params) => {
+    return new Promise((resolve, reject) => {
+      db.query(sql, params, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+  };
+
+  // Función para obtener el producto
+  const getProducto = async () => {
+    try {
+      // 1. Obtener información básica del producto
+      const query = `
+        SELECT 
+          p.id, 
+          p.nombre_producto, 
+          p.descripcion, 
+          p.precio, 
+          p.stock,
+          p.id_categoria,
+          p.id_color,
+          p.id_talla,
+          p.id_genero
+        FROM 
+          u988046079_bdgislive.producto p
+        WHERE 
+          p.id = ?;
+      `;
+
+      const productoResult = await queryAsync(query, [productId]);
+
+      if (productoResult.length === 0) {
+        return res.status(404).json({ error: "Producto no encontrado" });
+      }
+
+      const producto = productoResult[0];
+
+      // 2. Obtener todas las imágenes del producto
+      const imagenesQuery = `
+        SELECT id, url 
+        FROM u988046079_bdgislive.imagenes 
+        WHERE producto_id = ?;
+      `;
+
+      const imagenes = await queryAsync(imagenesQuery, [productId]);
+
+      // 3. Añadir las imágenes al objeto del producto
+      producto.imagenes = imagenes;
+
+      // 4. Mantener compatibilidad con código antiguo
+      if (imagenes.length > 0) {
+        producto.url = imagenes[0].url;
+      }
+
+      res.status(200).json(producto);
+    } catch (err) {
+      console.error("Error al obtener los detalles del producto:", err);
+      res.status(500).json({ error: "Error al obtener los detalles del producto" });
+    }
+  };
+
+  getProducto();
+});
+
+// Endpoint para búsqueda de productos
+router.get("/buscare", (req, res) => {
+  const { q } = req.query;
+
+  if (!q || q.trim() === '') {
+    return res.status(400).json({ error: "Se requiere un término de búsqueda" });
+  }
+
+  // Crear un término de búsqueda con comodines para MySQL
+  const searchTerm = `%${q.trim()}%`;
+
+  const query = `
+    SELECT
+      p.id,
+      p.nombre_producto,
+      p.descripcion,
+      p.precio,
+      p.stock,
+      p.id_categoria,
+      p.id_color,
+      p.id_talla,
+      p.id_genero,
+      c.nombre AS categoria,
+      co.color,
+      t.talla,
+      g.genero,
+      i.url
+    FROM
+      u988046079_bdgislive.producto p
+    LEFT JOIN
+      u988046079_bdgislive.categorias c ON p.id_categoria = c.id_categoria
+    LEFT JOIN
+      u988046079_bdgislive.color co ON p.id_color = co.id
+    LEFT JOIN
+      u988046079_bdgislive.tallas t ON p.id_talla = t.id
+    LEFT JOIN
+      u988046079_bdgislive.genero g ON p.id_genero = g.id
+    LEFT JOIN
+      u988046079_bdgislive.imagenes i ON p.id = i.producto_id
+    WHERE
+      p.nombre_producto LIKE ? OR
+      p.descripcion LIKE ? OR
+      c.nombre LIKE ? OR
+      co.color LIKE ? OR
+      t.talla LIKE ? OR
+      g.genero LIKE ?
+    GROUP BY p.id
+    LIMIT 10
+  `;
+
+  db.query(
+    query,
+    [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm],
+    (err, results) => {
+      if (err) {
+        console.error("Error al buscar productos:", err);
+        return res.status(500).json({ error: "Error al buscar productos" });
+      }
+
+      res.status(200).json(results);
+    }
+  );
+});
 //YERELI PITSOTL 🥺
 module.exports = router;
