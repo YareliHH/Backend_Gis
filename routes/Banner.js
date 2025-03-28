@@ -1,99 +1,130 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const db = require("../Config/db");
+const db = require('../Config/db'); // Asegúrate de que db.js tiene las funciones necesarias
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const streamifier = require("streamifier");
 
-// Configuración de Cloudinary
+// 🔹 Configuración de Cloudinary
 cloudinary.config({
   cloud_name: "dqshjerfz",
   api_key: "621792211413143",
   api_secret: "Y2SiySDJ_WzYdaN96uoyUdtyt54",
 });
 
-// Configuración de multer para almacenar imágenes en memoria
+// 🔹 Configurar Multer para almacenamiento en memoria
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({ storage: storage });
 
-// **Obtener todos los banners**
-router.get("/obtenerbanner", (req, res) => {
-  const sql = "SELECT * FROM banners";
-  db.query(sql, (err, results) => {
-    if (err) return res.status(500).json({ error: "Error al obtener los banners." });
+// 🔹 Función para subir imágenes a Cloudinary
+const uploadToCloudinary = async (fileBuffer, folder) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: folder, resource_type: "image" },
+      (error, result) => {
+        if (error) {
+          console.error("Error al subir imagen a Cloudinary:", error);
+          reject(error);
+        } else {
+          resolve(result.secure_url);
+        }
+      }
+    );
+    streamifier.createReadStream(fileBuffer).pipe(stream);
+  });
+};
+
+// 🔹 Ruta para agregar un nuevo banner
+router.post("/banners", upload.single('imagen'), async (req, res) => {
+  const { titulo, descripcion } = req.body;
+
+  if (!titulo || !descripcion) {
+    return res.status(400).json({ message: "El título y la descripción son obligatorios." });
+  }
+
+  try {
+    const imageUrl = req.file ? await uploadToCloudinary(req.file.buffer, 'banners') : '';
+
+    db.crearBanner(titulo, descripcion, imageUrl, (err, result) => {
+      if (err) {
+        console.error("Error al agregar el banner:", err);
+        return res.status(500).json({ message: "Error interno del servidor" });
+      }
+      res.status(201).json({ message: "Banner agregado exitosamente", id: result.insertId });
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Error al subir la imagen" });
+  }
+});
+
+// 🔹 Obtener todos los banners
+router.get("/banners", (req, res) => {
+  db.obtenerTodosBanners((err, results) => {
+    if (err) {
+      console.error("Error al obtener los banners:", err);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
     res.json(results);
   });
 });
 
-// **Insertar un nuevo banner con imagen en Cloudinary**
-router.post("/insertabanner", upload.single("imagen"), async (req, res) => {
-  try {
-    const { titulo, descripcion } = req.body;
-    if (!titulo || !descripcion) {
-      return res.status(400).json({ error: "Título y descripción son obligatorios." });
-    }
-
-    let imageUrl = null;
-    if (req.file) {
-      const result = await uploadToCloudinary(req.file);
-      imageUrl = result.secure_url;
-    }
-
-    const sql = "INSERT INTO banners (titulo, descripcion, url) VALUES (?, ?, ?)";
-    db.query(sql, [titulo, descripcion, imageUrl], (err, result) => {
-      if (err) return res.status(500).json({ error: "Error al insertar el banner." });
-      res.json({ id: result.insertId, titulo, descripcion, url: imageUrl });
-    });
-  } catch (error) {
-    res.status(500).json({ error: "Error interno al insertar el banner." });
-  }
-});
-
-// **Actualizar un banner con opción de nueva imagen**
-router.put("/actualizarbanner/:id", upload.single("imagen"), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { titulo, descripcion } = req.body;
-
-    if (!titulo || !descripcion) {
-      return res.status(400).json({ error: "Título y descripción son obligatorios." });
-    }
-
-    let imageUrl = req.body.url; // Mantener la URL actual si no se sube nueva imagen
-    if (req.file) {
-      const result = await uploadToCloudinary(req.file);
-      imageUrl = result.secure_url;
-    }
-
-    const sql = "UPDATE banners SET titulo=?, descripcion=?, url=? WHERE id=?";
-    db.query(sql, [titulo, descripcion, imageUrl, id], (err) => {
-      if (err) return res.status(500).json({ error: "Error al actualizar el banner." });
-      res.json({ mensaje: "Banner actualizado", titulo, descripcion, url: imageUrl });
-    });
-  } catch (error) {
-    res.status(500).json({ error: "Error interno al actualizar el banner." });
-  }
-});
-
-// **Eliminar un banner por ID**
-router.delete("/eliminarbanner/:id", (req, res) => {
+// 🔹 Obtener un banner por ID
+router.get("/banners/:id", (req, res) => {
   const { id } = req.params;
-  const sql = "DELETE FROM banners WHERE id=?";
-  db.query(sql, [id], (err) => {
-    if (err) return res.status(500).json({ error: "Error al eliminar el banner." });
-    res.json({ mensaje: "Banner eliminado" });
+
+  db.obtenerBannerPorId(id, (err, results) => {
+    if (err) {
+      console.error("Error al obtener el banner:", err);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Banner no encontrado" });
+    }
+    res.json(results[0]);
   });
 });
 
-// **Función para subir imágenes a Cloudinary**
-const uploadToCloudinary = (file) => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream((error, result) => {
-      if (error) reject(error);
-      else resolve(result);
+// 🔹 Editar un banner
+router.put("/banners/:id", upload.single('imagen'), async (req, res) => {
+  const { id } = req.params;
+  const { titulo, descripcion } = req.body;
+
+  if (!titulo || !descripcion) {
+    return res.status(400).json({ message: "El título y la descripción son obligatorios." });
+  }
+
+  try {
+    const imageUrl = req.file ? await uploadToCloudinary(req.file.buffer, 'banners') : null;
+
+    db.actualizarBanner(id, titulo, descripcion, imageUrl, (err, result) => {
+      if (err) {
+        console.error("Error al actualizar el banner:", err);
+        return res.status(500).json({ message: "Error interno del servidor" });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Banner no encontrado" });
+      }
+      res.json({ message: "Banner actualizado exitosamente" });
     });
-    streamifier.createReadStream(file.buffer).pipe(stream);
+  } catch (err) {
+    res.status(500).json({ message: "Error al subir la imagen" });
+  }
+});
+
+// 🔹 Eliminar un banner
+router.delete("/banners/:id", (req, res) => {
+  const { id } = req.params;
+
+  db.eliminarBanner(id, (err, result) => {
+    if (err) {
+      console.error("Error al eliminar el banner:", err);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Banner no encontrado" });
+    }
+    res.json({ message: "Banner eliminado exitosamente" });
   });
-};
+});
 
 module.exports = router;

@@ -17,43 +17,28 @@ cloudinary.config({
   api_secret: 'Y2SiySDJ_WzYdaN96uoyUdtyt54',
 });
 
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    // Validar tipos de archivo
-    if (!file.mimetype.match(/^image\/(jpeg|png|gif)$/)) {
-      return cb(new Error('Solo se permiten imágenes (JPEG, PNG, GIF)'), false);
+//  Endpoint para agregar un producto con imagen
+router.post("/agregarproducto", upload.single("imagenes"), (req, res) => {
+  const { nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero } = req.body;
+  const imagenUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+  const query = `
+      INSERT INTO producto (nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero, imagen)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+    query,
+    [nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero, imagenUrl],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: "Error al agregar el producto", err });
+      }
+      res.json({ message: "Producto agregado con éxito", id: result.insertId });
     }
-    cb(null, true);
-  }
+  );
 });
 
-// Función para subir imagen a Cloudinary
-const uploadToCloudinary = (buffer) => {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      { folder: "productos" },
-      (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
-      }
-    );
-    streamifier.createReadStream(buffer).pipe(uploadStream);
-  });
-};
-
-// Manejo de errores
-const asyncHandler = (fn) => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch((err) => {
-    console.error("Error en la operación:", err);
-    res.status(500).json({
-      error: "Error en el servidor",
-      message: err.message
-    });
-  });
-};
 
 // Obtener todos los productos con imágenes
 router.get("/obtener", asyncHandler(async (req, res) => {
@@ -92,90 +77,86 @@ router.get("/obtener", asyncHandler(async (req, res) => {
 // Obtener un producto por ID con sus imágenes
 router.get("/obtener/:id", asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const query = `
+        SELECT p.id, p.nombre_producto, p.descripcion, p.precio, p.stock, 
+               p.fecha_creacion, p.fecha_actualizacion,
+               c.nombre AS categoria, co.color, t.talla, g.genero
+        FROM producto p
+        LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+        LEFT JOIN color co ON p.id_color = co.id
+        LEFT JOIN tallas t ON p.id_talla = t.id
+        LEFT JOIN genero g ON p.id_genero = g.id
+        WHERE p.id = ?
+    `;
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      console.error("Error al obtener el producto:", err);
+      return res.status(500).json({ error: "Error al obtener el producto" });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+    res.status(200).json(results[0]);
+  });
+});
 
-  // Obtener el producto con sus relaciones
-  const [producto] = await queryAsync(`
-    SELECT p.id, p.nombre_producto, p.descripcion, p.precio, p.stock, 
-           p.fecha_creacion, p.fecha_actualizacion, p.id_categoria, 
-           p.id_color, p.id_talla, p.id_genero,
-           c.nombre AS categoria, co.color, t.talla, g.genero
-    FROM producto p
-    LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
-    LEFT JOIN color co ON p.id_color = co.id
-    LEFT JOIN tallas t ON p.id_talla = t.id
-    LEFT JOIN genero g ON p.id_genero = g.id
-    WHERE p.id = ?
-  `, [id]);
-
-  if (!producto) {
-    return res.status(404).json({ message: "Producto no encontrado" });
-  }
-
-  // Obtener las imágenes del producto
-  const imagenes = await queryAsync(
-    "SELECT id, url FROM imagenes WHERE producto_id = ?",
-    [id]
-  );
-
-  producto.imagenes = imagenes;
-
-  res.status(200).json(producto);
-}));
-
-// Obtener imágenes de un producto
-router.get("/imagenes/:id", asyncHandler(async (req, res) => {
+// Agregar un nuevo producto con imágenes en Cloudinary
+router.put("/actualizar/:id", upload.array("imagenes", 5), async (req, res) => {
   const { id } = req.params;
-
-  const imagenes = await queryAsync(
-    "SELECT id, url FROM imagenes WHERE producto_id = ?",
-    [id]
-  );
-
-  res.status(200).json(imagenes);
-}));
-
-// Agregar un nuevo producto con múltiples imágenes
-router.post("/agregarproducto", upload.array("imagenes", 10), asyncHandler(async (req, res) => {
   const { nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero } = req.body;
 
-  // Validación de datos
-  if (!nombre_producto || !descripcion || !precio || !stock || !id_categoria || !id_color || !id_talla || !id_genero) {
-    return res.status(400).json({ error: "Todos los campos son requeridos" });
-  }
-
-  // Insertar el producto
-  const result = await queryAsync(
-    `INSERT INTO producto (nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero]
-  );
-
-  const productoId = result.insertId;
-
-  // Procesar y guardar imágenes
-  if (req.files && req.files.length > 0) {
-    for (const file of req.files) {
-      try {
-        // Subir a Cloudinary
-        const uploadResult = await uploadToCloudinary(file.buffer);
-
-        // Guardar referencia en la base de datos
-        await queryAsync(
-          "INSERT INTO imagenes (producto_id, url, creado_en) VALUES (?, ?, NOW())",
-          [productoId, uploadResult.secure_url]
-        );
-      } catch (error) {
-        console.error("Error al procesar imagen:", error);
-        // Continuamos con las siguientes imágenes aunque falle alguna
+  // Actualizar la información del producto
+  db.query(
+    `
+      UPDATE producto
+      SET nombre_producto = ?, descripcion = ?, precio = ?, stock = ?, 
+          id_categoria = ?, id_color = ?, id_talla = ?, id_genero = ?, 
+          fecha_actualizacion = CURRENT_TIMESTAMP 
+      WHERE id = ?
+      `,
+    [nombre_producto, descripcion, precio, stock, id_categoria, id_color, id_talla, id_genero, id],
+    async (err) => {
+      if (err) {
+        console.error("Error al actualizar producto:", err);
+        return res.status(500).json({ error: "Error al actualizar producto" });
       }
-    }
-  }
 
-  res.status(201).json({
-    message: "Producto agregado con éxito",
-    id: productoId
-  });
-}));
+      // Si se envían nuevas imágenes, procesarlas
+      if (req.files && req.files.length > 0) {
+        // Opcional: eliminar las imágenes anteriores de la BD (y de Cloudinary si lo deseas)
+        await new Promise((resolve, reject) => {
+          db.query("DELETE FROM imagenes WHERE producto_id = ?", [id], (err) => {
+            if (err) return reject(err);
+            resolve();
+          });
+        });
+
+        // Procesar y guardar cada nueva imagen
+        for (const file of req.files) {
+          const uploadResult = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: "productos" },
+              (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+              }
+            );
+            streamifier.createReadStream(file.buffer).pipe(stream);
+          });
+
+          await new Promise((resolve, reject) => {
+            const query = "INSERT INTO imagenes (producto_id, url) VALUES (?, ?)";
+            db.query(query, [id, uploadResult.secure_url], (err) => {
+              if (err) return reject(err);
+              resolve();
+            });
+          });
+        }
+      }
+      res.json({ message: "Producto actualizado correctamente" });
+    }
+  );
+});
 
 // Actualizar un producto y sus imágenes
 router.put("/actualizar/:id", upload.array("imagenes", 10), asyncHandler(async (req, res) => {

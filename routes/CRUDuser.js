@@ -163,7 +163,8 @@ router.get('/verificar-auth', (req, res) => {
         return res.json({
             autenticado: true,
             user: usuario.correo,
-            tipo: usuario.tipo
+            tipo: usuario.tipo,
+            id: usuario.id
         });
     });
 });
