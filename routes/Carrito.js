@@ -2,8 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../Config/db");
 
-
-
+//carrito de compras
 router.post("/agregarcarrito", (req, res) => {
     const { usuario_id, producto_id, cantidad } = req.body;
 
