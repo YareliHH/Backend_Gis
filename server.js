@@ -25,6 +25,7 @@ const genero = require ('./routes/Generos.js');
 const carrito = require ('./routes/Carrito.js');
 const banner = require ('./routes/Banner.js');
 const chat = require ('./routes/chat.js');
+const promociones = require ('./routes/Promociones.js');
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use('/api', genero);
 app.use('/api', carrito);
 app.use('/api', banner);
 app.use('/api', chat);
+app.use('/api', promociones);
 
 
 // Iniciar el servidor
