@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../Config/db'); // Asegúrate de que db.js tiene las funciones necesarias
+const db = require("../Config/db"); // Asegúrate de que db.js tiene las funciones necesarias
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const streamifier = require("streamifier");
@@ -35,7 +35,7 @@ const uploadToCloudinary = async (fileBuffer, folder) => {
 };
 
 // 🔹 Ruta para agregar un nuevo banner
-router.post("/banners", upload.single('imagen'), async (req, res) => {
+router.post("/agregarbanner", upload.single('imagen'), async (req, res) => {
   const { titulo, descripcion } = req.body;
 
   if (!titulo || !descripcion) {
@@ -58,7 +58,7 @@ router.post("/banners", upload.single('imagen'), async (req, res) => {
 });
 
 // 🔹 Obtener todos los banners
-router.get("/banners", (req, res) => {
+router.get("/obtbanner", (req, res) => {
   db.obtenerTodosBanners((err, results) => {
     if (err) {
       console.error("Error al obtener los banners:", err);
@@ -69,7 +69,7 @@ router.get("/banners", (req, res) => {
 });
 
 // 🔹 Obtener un banner por ID
-router.get("/banners/:id", (req, res) => {
+router.get("/bannersget/:id", (req, res) => {
   const { id } = req.params;
 
   db.obtenerBannerPorId(id, (err, results) => {
@@ -85,7 +85,7 @@ router.get("/banners/:id", (req, res) => {
 });
 
 // 🔹 Editar un banner
-router.put("/banners/:id", upload.single('imagen'), async (req, res) => {
+router.put("/bannersedit/:id", upload.single('imagen'), async (req, res) => {
   const { id } = req.params;
   const { titulo, descripcion } = req.body;
 
