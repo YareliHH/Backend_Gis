@@ -5,7 +5,6 @@ const db = require('../Config/db');
 // ✅ Obtener todas las promociones
 router.get('/promo/get', async (req, res) => {
  try {
-  console.log("promo get");
     const query = 'SELECT * FROM promocion'
 
     const [rows] = await db.promise().query(query);
@@ -18,28 +17,27 @@ router.get('/promo/get', async (req, res) => {
   }
 });
 
-// ✅ Crear una nueva promoción
+// ✅ Backend corregido
 router.post('/promo/create', async (req, res) => {
   const {
     id_producto,
     titulo,
     descripcion,
     tipo,
+    valor_descuento,        // ← AGREGAR
+    porcentaje_descuento,   // ← AGREGAR
     fecha_inicio,
     fecha_fin,
     estado
   } = req.body;
 
-  if (!id_producto || !titulo || !tipo || !fecha_inicio || !fecha_fin || !estado) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios' });
-  }
-
   try {
     const query = `
       INSERT INTO promocion (
         id_producto, titulo, descripcion, tipo,
+        valor_descuento, porcentaje_descuento,  -- ← AGREGAR
         fecha_inicio, fecha_fin, estado
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)  -- ← MÁS PARÁMETROS
     `;
 
     const [result] = await db.promise().execute(query, [
@@ -47,6 +45,8 @@ router.post('/promo/create', async (req, res) => {
       titulo,
       descripcion || '',
       tipo,
+      valor_descuento || null,       
+      porcentaje_descuento || null,  
       fecha_inicio,
       fecha_fin,
       estado
@@ -65,7 +65,7 @@ router.post('/promo/create', async (req, res) => {
   }
 });
 
-// ✅ Actualizar promoción
+// ✅ También actualizar el PUT
 router.put('/promo/update/:id', async (req, res) => {
   const { id } = req.params;
   const {
@@ -73,6 +73,8 @@ router.put('/promo/update/:id', async (req, res) => {
     titulo,
     descripcion,
     tipo,
+    valor_descuento,        
+    porcentaje_descuento,   
     fecha_inicio,
     fecha_fin,
     estado
@@ -82,6 +84,7 @@ router.put('/promo/update/:id', async (req, res) => {
     const query = `
       UPDATE promocion SET 
         id_producto = ?, titulo = ?, descripcion = ?, tipo = ?, 
+        valor_descuento = ?, porcentaje_descuento = ?,  -- ← AGREGAR
         fecha_inicio = ?, fecha_fin = ?, estado = ?
       WHERE id_promocion = ?
     `;
@@ -91,6 +94,8 @@ router.put('/promo/update/:id', async (req, res) => {
       titulo,
       descripcion,
       tipo,
+      valor_descuento || null,        // ← AGREGAR
+      porcentaje_descuento || null,   // ← AGREGAR
       fecha_inicio,
       fecha_fin,
       estado,
