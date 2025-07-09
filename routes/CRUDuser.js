@@ -61,11 +61,9 @@ router.post("/login", async (req, res) => {
 
       if (lockUntil && currentTime < lockUntil) {
         const remainingTime = Math.round((lockUntil - currentTime) / 60000);
-        return res
-          .status(403)
-          .json({
-            error: `Cuenta bloqueada. Inténtalo de nuevo en ${remainingTime} minutos.`,
-          });
+        return res.status(403).json({
+          error: `Cuenta bloqueada. Inténtalo de nuevo en ${remainingTime} minutos.`,
+        });
       }
 
       // Comparar contraseñas
@@ -113,11 +111,9 @@ router.post("/login", async (req, res) => {
               }
 
               if (newLockUntil) {
-                return res
-                  .status(403)
-                  .json({
-                    error: `Cuenta bloqueada por ${LOCK_TIME_MINUTES} minutos debido a demasiados intentos fallidos.`,
-                  });
+                return res.status(403).json({
+                  error: `Cuenta bloqueada por ${LOCK_TIME_MINUTES} minutos debido a demasiados intentos fallidos.`,
+                });
               }
 
               return res.status(401).json({ error: "Contraseña incorrecta" });
@@ -156,17 +152,18 @@ router.post("/login", async (req, res) => {
 
               // Configurar cookie visible (no httpOnly)
               res.cookie("auth_cookie", sessionToken, {
-                httpOnly: false, // Para que sea visible en el navegador
+                httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
-                sameSite: "Lax",
-                maxAge: 24 * 60 * 60 * 1000, // 1 día
+                sameSite:
+                  process.env.NODE_ENV === "production" ? "None" : "Lax",
                 path: "/",
+                maxAge: 24 * 60 * 60 * 1000,
               });
 
               res.json({
                 user: usuario.correo,
                 tipo: usuario.tipo,
-                id: usuario.id, 
+                id: usuario.id,
               });
             }
           );
