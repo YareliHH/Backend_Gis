@@ -25,7 +25,7 @@ cloudinary.config({
 });
 
 // Endpoint para insertar el perfil de empresa
-router.post('/perfil', upload.single('logo'), async (req, res) => {
+router.post('/perfiles', upload.single('logo'), async (req, res) => {
     const { nombre_empresa, direccion, telefono, correo_electronico, descripcion, slogan } = req.body;
     if (!nombre_empresa || !correo_electronico) return res.status(400).send('Nombre de empresa y correo electrónico son obligatorios');
 
