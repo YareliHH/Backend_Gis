@@ -78,7 +78,7 @@ app.use('/api', faqs);
 app.use('/api', productos);
 app.use('/api', acercaDe);
 app.use('/api', ventas);
-app.use('/api', categoria);
+app.use('/api/categorias', categoria);
 app.use('/api', color);
 app.use('/api', tallas);
 app.use('/api', genero);
