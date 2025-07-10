@@ -651,5 +651,5 @@ router.get("/buscare", (req, res) => {
     }
   );
 });
-//YERELI PITSOTL 🥺
+
 module.exports = router;
