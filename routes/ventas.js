@@ -17,7 +17,7 @@ router.get("/ventas/:id", (req, res) => {
     });
 });
 
-// Registrar una nueva venta sdhdbddbhed
+// Registrar una nueva venta c
 router.post("/registrar", (req, res) => {
     const { id_producto, cantidad, precio_unitario, total, fecha, metodo_pago } = req.body;
     const query = "INSERT INTO ventas (id_producto, cantidad, precio_unitario, total, fecha, metodo_pago) VALUES (?, ?, ?, ?, ?, ?)";
