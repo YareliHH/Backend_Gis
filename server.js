@@ -27,6 +27,7 @@ const banner = require ('./routes/Banner.js');
 const chat = require ('./routes/chat.js');
 const promociones = require ('./routes/Promociones.js');
 const mercadopago = require ('./routes/MercadoPago.js');
+const direcciones = require ('./routes/Direcciones.js');
 
 const app = express();
 
@@ -88,6 +89,7 @@ app.use('/api', banner);
 app.use('/api', chat);
 app.use('/api', promociones);
 app.use('/api', mercadopago);
+app.use('/api', direcciones);
 
 
 // Iniciar el servidor
