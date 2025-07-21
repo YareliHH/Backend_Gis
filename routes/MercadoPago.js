@@ -8,7 +8,7 @@ const client = new MercadoPagoConfig({
 });
 
 // 🌐 URL de tu frontend (ajusta según el entorno)
-const APP_URL = 'http://localhost:3000';
+const APP_URL = 'https://backend-gis-1.onrender.com';
 
 router.post('/crear_preferencia', async (req, res) => {
     try {
