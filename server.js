@@ -36,7 +36,7 @@ app.use(cookieParser());
 // Configuración CORS esencial para cookies
 app.use(cors({
  origin: [
-   "http://localhost:3000",
+   "http://localhost:3000", "http://localhost:3001",
   "http://localhost:3002" ,"https://gisliveboutique.com"
  ],
   credentials: true,
