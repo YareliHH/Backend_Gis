@@ -89,7 +89,7 @@ app.use('/api', banner);
 app.use('/api', chat);
 app.use('/api', promociones);
 app.use('/api', mercadopago);
-app.use('/api', direcciones);
+app.use('/api/direcciones', direcciones);
 
 
 // Iniciar el servidor
