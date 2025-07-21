@@ -88,7 +88,7 @@ app.use('/api', carrito);
 app.use('/api', banner);
 app.use('/api', chat);
 app.use('/api', promociones);
-app.use('/api', mercadopago);
+app.use('/api/pago', mercadopago);
 app.use('/api/direcciones', direcciones);
 
 
