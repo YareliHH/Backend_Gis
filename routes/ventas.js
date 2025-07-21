@@ -1,60 +1,78 @@
+// backend/index.js
 const express = require('express');
-const router = express.Router();
-const db = require('../Config/db');
+const cors = require('cors');
+const app = express();
+const db = require("../Config/db");
 
-// Obtener una venta por ID
-router.get("/ventas/:id", (req, res) => {
-    const { id } = req.params;
-    const query = "SELECT * FROM ventas WHERE id = ?";
-    db.query(query, [id], (err, result) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-        } else if (result.length === 0) {
-            res.status(404).json({ error: "Venta no encontrada" });
-        } else {
-            res.json(result[0]);
-        }
+app.use(cors());
+app.use(express.json());
+
+// Obtener una venta por ID con sus detalles
+app.get('/api/ventas/:id', (req, res) => {
+  const { id } = req.params;
+
+  const queryVenta = "SELECT * FROM ventas WHERE id = ?";
+  const queryDetalles = "SELECT * FROM detalles_venta WHERE venta_id = ?";
+
+  db.query(queryVenta, [id], (err, ventaResult) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (ventaResult.length === 0) return res.status(404).json({ error: "Venta no encontrada" });
+
+    const venta = ventaResult[0];
+    db.query(queryDetalles, [id], (errDetalles, detallesResult) => {
+      if (errDetalles) return res.status(500).json({ error: errDetalles.message });
+
+      venta.detalles = detallesResult;
+      res.json(venta);
     });
+  });
 });
 
-// Registrar una nueva venta c
-router.post("/registrar", (req, res) => {
-    const { id_producto, cantidad, precio_unitario, total, fecha, metodo_pago } = req.body;
-    const query = "INSERT INTO ventas (id_producto, cantidad, precio_unitario, total, fecha, metodo_pago) VALUES (?, ?, ?, ?, ?, ?)";
-    db.query(query, [id_producto, cantidad, precio_unitario, total, fecha, metodo_pago], (err, result) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-        } else {
-            res.json({ mensaje: "Venta registrada con éxito", id: result.insertId });
-        }
+// Registrar una nueva venta con sus detalles
+app.post('/api/ventas/registrar', (req, res) => {
+  const { usuario_id, total, metodo_pago_id, estado, direccion_envio, estado_envio, detalles } = req.body;
+
+  const venta = {
+    usuario_id,
+    total,
+    metodo_pago_id,
+    estado,
+    direccion_envio,
+    estado_envio
+  };
+
+  const insertVenta = "INSERT INTO ventas SET ?";
+  db.query(insertVenta, venta, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    const ventaId = result.insertId;
+    const detallesData = detalles.map(item => [ventaId, item.cantidad, item.precio_unitario, item.producto_nombre]);
+    const insertDetalles = "INSERT INTO detalles_venta (venta_id, cantidad, precio_unitario, producto_nombre) VALUES ?";
+
+    db.query(insertDetalles, [detallesData], (err2) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+
+      res.json({ mensaje: "Venta registrada con detalles", venta_id: ventaId });
     });
+  });
 });
 
-// Actualizar una venta
-router.put("/actualizar/:id", (req, res) => {
-    const { id } = req.params;
-    const { id_producto, cantidad, precio_unitario, total, metodo_pago } = req.body;
-    const query = "UPDATE ventas SET id_producto = ?, cantidad = ?, precio_unitario = ?, total = ?, metodo_pago = ? WHERE id = ?";
-    db.query(query, [id_producto, cantidad, precio_unitario, total, metodo_pago, id], (err, result) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-        } else {
-            res.json({ mensaje: "Venta actualizada con éxito" });
-        }
-    });
-});
+// Eliminar una venta y sus detalles
+app.delete('/api/ventas/eliminar/:id', (req, res) => {
+  const { id } = req.params;
 
-// Eliminar una venta
-router.delete("/eliminar/:id", (req, res) => {
-    const { id } = req.params;
-    const query = "DELETE FROM ventas WHERE id = ?";
-    db.query(query, [id], (err, result) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-        } else {
-            res.json({ mensaje: "Venta eliminada con éxito" });
-        }
+  const deleteDetalles = "DELETE FROM detalles_venta WHERE venta_id = ?";
+  const deleteVenta = "DELETE FROM ventas WHERE id = ?";
+
+  db.query(deleteDetalles, [id], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    db.query(deleteVenta, [id], (err2) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+
+      res.json({ mensaje: "Venta y detalles eliminados" });
     });
+  });
 });
 
 module.exports = router;
