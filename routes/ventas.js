@@ -1,14 +1,10 @@
-// backend/index.js
+// backend/routes/ventas.js
 const express = require('express');
-const cors = require('cors');
-const app = express();
+const router = express.Router();
 const db = require("../Config/db");
 
-app.use(cors());
-app.use(express.json());
-
 // Obtener una venta por ID con sus detalles
-app.get('/api/ventas/:id', (req, res) => {
+router.get('/:id', (req, res) => {
   const { id } = req.params;
 
   const queryVenta = "SELECT * FROM ventas WHERE id = ?";
@@ -29,7 +25,7 @@ app.get('/api/ventas/:id', (req, res) => {
 });
 
 // Registrar una nueva venta con sus detalles
-app.post('/api/ventas/registrar', (req, res) => {
+router.post('/registrar', (req, res) => {
   const { usuario_id, total, metodo_pago_id, estado, direccion_envio, estado_envio, detalles } = req.body;
 
   const venta = {
@@ -58,7 +54,7 @@ app.post('/api/ventas/registrar', (req, res) => {
 });
 
 // Eliminar una venta y sus detalles
-app.delete('/api/ventas/eliminar/:id', (req, res) => {
+router.delete('/eliminar/:id', (req, res) => {
   const { id } = req.params;
 
   const deleteDetalles = "DELETE FROM detalles_venta WHERE venta_id = ?";
