@@ -652,4 +652,55 @@ router.get("/buscare", (req, res) => {
   );
 });
 
+// Obtener detalles de productos pasándoles un array de nombres
+router.post("/productos/recomendados", (req, res) => {
+  const { recomendaciones } = req.body;
+
+  if (
+    !Array.isArray(recomendaciones) ||
+    recomendaciones.length === 0
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Debes enviar un array 'recomendaciones' con uno o más nombres de producto." });
+  }
+
+  // Construye placeholders para la cláusula IN (?, ?, ?, ...)
+  const placeholders = recomendaciones.map(() => "?").join(",");
+  const query = `
+    SELECT
+      p.id,
+      p.nombre_producto,
+      p.descripcion,
+      p.precio,
+      p.stock,
+      p.fecha_creacion,
+      p.fecha_actualizacion,
+      p.id_categoria,
+      p.id_color,
+      p.id_talla,
+      p.id_genero,
+      i.url AS imagen_url
+    FROM
+      u988046079_bdgislive.producto p
+    LEFT JOIN
+      u988046079_bdgislive.imagenes i
+    ON
+      p.id = i.producto_id
+    WHERE
+      p.nombre_producto IN (${placeholders});
+  `;
+
+  db.query(query, recomendaciones, (err, results) => {
+    if (err) {
+      console.error("Error al obtener productos recomendados:", err);
+      return res
+        .status(500)
+        .json({ error: "Error al obtener productos recomendados" });
+    }
+    res.status(200).json(results);
+  });
+});
+
+
 module.exports = router;
