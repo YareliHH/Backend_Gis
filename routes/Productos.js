@@ -668,7 +668,7 @@ router.post("/productos/recomendados", (req, res) => {
   // Construye placeholders para la cláusula IN (?, ?, ?, ...)
   const placeholders = recomendaciones.map(() => "?").join(",");
   const query = `
-  SELECT
+SELECT
   p.id,
   p.nombre_producto,
   p.descripcion,
@@ -683,9 +683,8 @@ router.post("/productos/recomendados", (req, res) => {
   MIN(i.url) AS imagen_url
 FROM producto p
 LEFT JOIN imagenes i ON p.id = i.producto_id
-WHERE p.nombre_producto IN (${placeholders})
+WHERE TRIM(p.nombre_producto) IN (${placeholders})
 GROUP BY p.id
-
   `;
 
   db.query(query, recomendaciones, (err, results) => {
