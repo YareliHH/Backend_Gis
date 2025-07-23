@@ -667,24 +667,25 @@ router.post("/productos/recomendados", (req, res) => {
 
   // Construye placeholders para la cláusula IN (?, ?, ?, ...)
   const placeholders = recomendaciones.map(() => "?").join(",");
+
   const query = `
-SELECT
-  p.id,
-  p.nombre_producto,
-  p.descripcion,
-  p.precio,
-  p.stock,
-  p.fecha_creacion,
-  p.fecha_actualizacion,
-  p.id_categoria,
-  p.id_color,
-  p.id_talla,
-  p.id_genero,
-  MIN(i.url) AS imagen_url
-FROM producto p
-LEFT JOIN imagenes i ON p.id = i.producto_id
-WHERE TRIM(p.nombre_producto) IN (${placeholders})
-GROUP BY p.id
+    SELECT
+      p.id,
+      p.nombre_producto,
+      p.descripcion,
+      p.precio,
+      p.stock,
+      p.fecha_creacion,
+      p.fecha_actualizacion,
+      p.id_categoria,
+      p.id_color,
+      p.id_talla,
+      p.id_genero,
+      MIN(i.url) AS imagen_url
+    FROM producto p
+    LEFT JOIN imagenes i ON p.id = i.producto_id
+    WHERE TRIM(p.nombre_producto) IN (${placeholders})
+    GROUP BY p.id
   `;
 
   db.query(query, recomendaciones, (err, results) => {
@@ -697,6 +698,5 @@ GROUP BY p.id
     res.status(200).json(results);
   });
 });
-
 
 module.exports = router;
