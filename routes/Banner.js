@@ -34,31 +34,43 @@ const uploadToCloudinary = (fileBuffer, folder) => {
   });
 };
 
-// 🔹 Crear banner
-router.post("/agregarbanner", upload.single('imagen'), async (req, res) => {
+// Agregar un nuevo banner con una imagen
+router.post("/agregarbanner", upload.single('imagen'), asyncHandler(async (req, res) => {
   const { titulo, descripcion } = req.body;
 
+  // Validación de datos
   if (!titulo || !descripcion) {
     return res.status(400).json({ message: "El título y la descripción son obligatorios." });
   }
 
+  let url = '';
+  if (req.file) {
+    try {
+      const uploadResult = await uploadToCloudinary(req.file.buffer, 'banners');
+      url = uploadResult.secure_url || '';
+    } catch (error) {
+      console.error("Error al subir la imagen:", error);
+      return res.status(500).json({ message: "Error al subir la imagen" });
+    }
+  }
+
   try {
-    const url = req.file ? await uploadToCloudinary(req.file.buffer, 'banners') : '';
-    const sql = "INSERT INTO banner (titulo, descripcion, url) VALUES (?, ?, ?)";
+    const result = await queryAsync(
+      "INSERT INTO banner (titulo, descripcion, url) VALUES (?, ?, ?)",
+      [titulo, descripcion, url]
+    );
 
-    db.query(sql, [titulo, descripcion, url], (err, result) => {
-      if (err) {
-        console.error("Error al insertar banner:", err);
-        return res.status(500).json({ message: "Error al guardar en la base de datos" });
-      }
-
-      res.status(201).json({ message: "Banner agregado exitosamente", id: result.insertId, url });
+    res.status(201).json({
+      message: "Banner agregado exitosamente",
+      id: result.insertId,
+      url
     });
   } catch (err) {
-    console.error("Error al subir la imagen:", err);
-    res.status(500).json({ message: "Error al subir la imagen" });
+    console.error("Error al insertar banner:", err);
+    res.status(500).json({ message: "Error al guardar en la base de datos" });
   }
-});
+}));
+
 
 // 🔹 Obtener todos los banners
 router.get("/obtenerbanner", (req, res) => {
