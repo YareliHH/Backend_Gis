@@ -121,9 +121,11 @@ router.put("/bannersedit/:id", upload.single('imagen'), async (req, res) => {
 
 // 🔹 Eliminar banner
 router.delete("/banners/:id", (req, res) => {
-  const { id } = req.params;
 
-  db.query("DELETE FROM banner WHERE id = ?", [id], (err, result) => {
+  try {
+     const { id } = req.params;
+
+    db.query("DELETE FROM banner WHERE id = ?", [id], (err, result) => {
     if (err) {
       console.error("Error al eliminar el banner:", err);
       return res.status(500).json({ message: "Error al eliminar el banner" });
@@ -135,6 +137,13 @@ router.delete("/banners/:id", (req, res) => {
 
     return res.json({ message: "Banner eliminado exitosamente" });
   });
+  }catch(error) 
+  {
+    console.error("error en eliminar el banner :", error);
+    res.status(500).json({ message: "Error a elimnar banner" });
+
+  }
+ 
 });
 
 module.exports = router;
