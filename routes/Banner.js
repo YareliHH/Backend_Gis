@@ -61,7 +61,7 @@ router.post("/agregarbanner", upload.single('imagen'), async (req, res) => {
 });
 
 // 🔹 Obtener todos los banners
-router.get("/obtbanner", (req, res) => {
+router.get("/obtenerbanner", (req, res) => {
   db.query("SELECT * FROM banner ORDER BY id DESC", (err, results) => {
     if (err) return res.status(500).json({ message: "Error al obtener banners" });
     res.json(results);
