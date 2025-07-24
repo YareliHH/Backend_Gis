@@ -53,6 +53,7 @@ router.post("/agregarbanner", upload.single('imagen'), async (req, res) => {
       res.status(201).json({ message: "Banner agregado exitosamente", id: result.insertId });
     });
   } catch (err) {
+    console.error(' Error al crear la preferencia:', err);
     res.status(500).json({ message: "Error al subir la imagen" });
   }
 });
