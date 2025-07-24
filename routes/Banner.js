@@ -124,10 +124,18 @@ router.delete("/banners/:id", (req, res) => {
   const { id } = req.params;
 
   db.query("DELETE FROM banner WHERE id = ?", [id], (err, result) => {
-    if (err) return res.status(500).json({ message: "Error al eliminar el banner" });
-    if (result.affectedRows === 0) return res.status(404).json({ message: "Banner no encontrado" });
-    res.json({ message: "Banner eliminado exitosamente" });
+    if (err) {
+      console.error("Error al eliminar el banner:", err);
+      return res.status(500).json({ message: "Error al eliminar el banner" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Banner no encontrado" });
+    }
+
+    return res.json({ message: "Banner eliminado exitosamente" });
   });
 });
 
 module.exports = router;
+
