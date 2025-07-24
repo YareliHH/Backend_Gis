@@ -85,7 +85,7 @@ app.use('/api', color);
 app.use('/api', tallas);
 app.use('/api', genero);
 app.use('/api', carrito);
-app.use('/api', banner);
+app.use('/api/banner', banner);
 app.use('/api', chat);
 app.use('/api', promociones);
 app.use('/api/pago', mercadopago);
