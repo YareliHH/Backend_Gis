@@ -47,7 +47,6 @@ router.post("/agregarbanner", upload.single('imagen'), asyncHandler(async (req, 
   if (req.file) {
     try {
       const uploadResult = await uploadToCloudinary(req.file.buffer, 'banners');
-      url = uploadResult.secure_url || '';
     } catch (error) {
       console.error("Error al subir la imagen:", error);
       return res.status(500).json({ message: "Error al subir la imagen" });
@@ -57,7 +56,7 @@ router.post("/agregarbanner", upload.single('imagen'), asyncHandler(async (req, 
   try {
     const result = await queryAsync(
       "INSERT INTO banner (titulo, descripcion, url) VALUES (?, ?, ?)",
-      [titulo, descripcion, url]
+      [titulo, descripcion, uploadResult.secure_url]
     );
 
     res.status(201).json({
