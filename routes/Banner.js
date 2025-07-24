@@ -44,7 +44,7 @@ router.post("/agregarbanner", upload.single('imagen'), async (req, res) => {
 
   try {
     const url = req.file ? await uploadToCloudinary(req.file.buffer, 'banners') : '';
-    const sql = "INSERT INTO banners (titulo, descripcion, url) VALUES (?, ?, ?)";
+    const sql = "INSERT INTO banner (titulo, descripcion, url) VALUES (?, ?, ?)";
 
     db.query(sql, [titulo, descripcion, url], (err, result) => {
       if (err) {
@@ -92,8 +92,8 @@ router.put("/bannersedit/:id", upload.single('imagen'), async (req, res) => {
     const url = req.file ? await uploadToCloudinary(req.file.buffer, 'banners') : null;
 
     const sql = url
-      ? "UPDATE banners SET titulo = ?, descripcion = ?, url = ? WHERE id = ?"
-      : "UPDATE banners SET titulo = ?, descripcion = ? WHERE id = ?";
+      ? "UPDATE banner SET titulo = ?, descripcion = ?, url = ? WHERE id = ?"
+      : "UPDATE banner SET titulo = ?, descripcion = ? WHERE id = ?";
     
     const params = url ? [titulo, descripcion, url, id] : [titulo, descripcion, id];
 
