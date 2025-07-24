@@ -62,7 +62,7 @@ router.post("/agregarbanner", upload.single('imagen'), async (req, res) => {
 
 // 🔹 Obtener todos los banners
 router.get("/obtbanner", (req, res) => {
-  db.query("SELECT * FROM banners ORDER BY id DESC", (err, results) => {
+  db.query("SELECT * FROM banner ORDER BY id DESC", (err, results) => {
     if (err) return res.status(500).json({ message: "Error al obtener banners" });
     res.json(results);
   });
@@ -72,7 +72,7 @@ router.get("/obtbanner", (req, res) => {
 router.get("/bannersget/:id", (req, res) => {
   const { id } = req.params;
 
-  db.query("SELECT * FROM banners WHERE id = ?", [id], (err, results) => {
+  db.query("SELECT * FROM banner WHERE id = ?", [id], (err, results) => {
     if (err) return res.status(500).json({ message: "Error al obtener el banner" });
     if (results.length === 0) return res.status(404).json({ message: "Banner no encontrado" });
     res.json(results[0]);
@@ -112,7 +112,7 @@ router.put("/bannersedit/:id", upload.single('imagen'), async (req, res) => {
 router.delete("/banners/:id", (req, res) => {
   const { id } = req.params;
 
-  db.query("DELETE FROM banners WHERE id = ?", [id], (err, result) => {
+  db.query("DELETE FROM banner WHERE id = ?", [id], (err, result) => {
     if (err) return res.status(500).json({ message: "Error al eliminar el banner" });
     if (result.affectedRows === 0) return res.status(404).json({ message: "Banner no encontrado" });
     res.json({ message: "Banner eliminado exitosamente" });
