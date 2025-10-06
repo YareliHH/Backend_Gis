@@ -37,13 +37,17 @@ router.post("/loginMovil", async (req, res) => {
         return res.status(401).json({ error: "Contraseña incorrecta" });
       }
 
-      // Login exitoso
+      // Login exitoso - ⬇️ CAMBIO AQUÍ
       return res.status(200).json({
         message: "Login exitoso",
+        tipo: usuario.tipo,        // ⬅️ Agregar tipo en el nivel superior
+        id: usuario.id,            // ⬅️ Agregar id en el nivel superior
+        user: usuario.correo,      // ⬅️ Opcional: para consistencia con la otra ruta
         usuario: {
           id: usuario.id,
           nombre: usuario.nombre,
           correo: usuario.correo,
+          tipo: usuario.tipo,
         },
       });
     });
