@@ -35,7 +35,7 @@ const uploadToCloudinary = (fileBuffer, folder) => {
 };
 
 // Agregar un nuevo banner con una imagen
-router.post("/agregarbanner", upload.single('imagen'), asyncHandler(async (req, res) => {
+/*router.post("/agregarbanner", upload.single('imagen'), asyncHandler(async (req, res) => {
   const { titulo, descripcion } = req.body;
 
   // Validación de datos
@@ -70,6 +70,7 @@ router.post("/agregarbanner", upload.single('imagen'), asyncHandler(async (req, 
   }
 }));
 
+*/
 
 // 🔹 Obtener todos los banners
 router.get("/obtenerbanner", (req, res) => {
