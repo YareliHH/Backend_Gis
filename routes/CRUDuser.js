@@ -15,46 +15,41 @@ router.post("/loginMovil", async (req, res) => {
     return res.status(400).json({ error: "Correo y contraseña son obligatorios" });
   }
 
-  let connection;
   try {
-    // Conectar a la base de datos
-    connection = await mysql.createConnection(dbConfig);
+    // Buscar usuario por correo usando la conexión existente
+    const query = "SELECT * FROM usuarios WHERE correo = ?";
+    
+    connection.query(query, [correo], async (err, rows) => {
+      if (err) {
+        console.error("Error en la base de datos:", err);
+        return res.status(500).json({ error: "Error interno del servidor" });
+      }
 
-    // Buscar usuario por correo
-    const [rows] = await connection.execute(
-      "SELECT * FROM usuarios WHERE correo = ?",
-      [correo]
-    );
+      if (rows.length === 0) {
+        return res.status(401).json({ error: "Usuario no encontrado" });
+      }
 
-    if (rows.length === 0) {
-      return res.status(401).json({ error: "Usuario no encontrado" });
-    }
+      const usuario = rows[0];
 
-    const usuario = rows[0];
+      // Validar contraseña
+      const isPasswordValid = await bcrypt.compare(password, usuario.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: "Contraseña incorrecta" });
+      }
 
-    // Validar contraseña
-    const isPasswordValid = await bcrypt.compare(password, usuario.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: "Contraseña incorrecta" });
-    }
-
-    // Login exitoso
-    return res.status(200).json({
-      message: "Login exitoso",
-      usuario: {
-        id: usuario.id,
-        nombre: usuario.nombre,
-        correo: usuario.correo,
-        // Puedes agregar más campos que quieras devolver
-      },
+      // Login exitoso
+      return res.status(200).json({
+        message: "Login exitoso",
+        usuario: {
+          id: usuario.id,
+          nombre: usuario.nombre,
+          correo: usuario.correo,
+        },
+      });
     });
   } catch (error) {
     console.error("Error en login:", error);
     return res.status(500).json({ error: "Error interno del servidor" });
-  } finally {
-    if (connection) {
-      await connection.end();
-    }
   }
 });
 
