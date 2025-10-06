@@ -6,6 +6,57 @@ const crypto = require("crypto");
 const axios = require("axios");
 
 const LOCK_TIME_MINUTES = 20;
+// Ruta POST para login
+router.post("/loginMovil", async (req, res) => {
+  const { correo, password } = req.body;
+
+  // Validar que lleguen los datos
+  if (!correo || !password) {
+    return res.status(400).json({ error: "Correo y contraseña son obligatorios" });
+  }
+
+  let connection;
+  try {
+    // Conectar a la base de datos
+    connection = await mysql.createConnection(dbConfig);
+
+    // Buscar usuario por correo
+    const [rows] = await connection.execute(
+      "SELECT * FROM usuarios WHERE correo = ?",
+      [correo]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: "Usuario no encontrado" });
+    }
+
+    const usuario = rows[0];
+
+    // Validar contraseña
+    const isPasswordValid = await bcrypt.compare(password, usuario.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Contraseña incorrecta" });
+    }
+
+    // Login exitoso
+    return res.status(200).json({
+      message: "Login exitoso",
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        correo: usuario.correo,
+        // Puedes agregar más campos que quieras devolver
+      },
+    });
+  } catch (error) {
+    console.error("Error en login:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+});
 
 // Login (mantener tu implementación actual con pequeñas modificaciones)
 router.post("/login", async (req, res) => {
