@@ -29,7 +29,7 @@ const uploadToCloudinary = async (fileBuffer, folder) => {
 };
 
 // 1. Crear insignia
-router.post("/insignias", upload.fields([{ name: "icono" }]), async (req, res) => {
+router.post("/crear", upload.fields([{ name: "icono" }]), async (req, res) => {
   const { nombre, descripcion, tipo, regla } = req.body;
 
   if (!nombre || !tipo || !regla) {
@@ -54,7 +54,7 @@ router.post("/insignias", upload.fields([{ name: "icono" }]), async (req, res) =
 });
 
 // 2. Obtener todas las insignias
-router.get("/insignias", async (req, res) => {
+router.get("/obtener", async (req, res) => {
   try {
     const [rows] = await db.execute("SELECT * FROM insignias");
     res.json(rows);
@@ -133,23 +133,3 @@ router.delete("/insignias/:id", async (req, res) => {
 module.exports = router;
 
 
-
-/* Obtener insignias de un usuario
-router.get('/user-insignias', verifyToken, async (req, res) => {
-  const usuario_id = req.usuario.id;
-
-  try {
-    const [insignias] = await db.query(
-      `SELECT i.id, i.nombre, i.descripcion, i.icono_url
-       FROM usuarios_insignias ui
-       JOIN insignias i ON ui.insignia_id = i.id
-       WHERE ui.usuario_id = ?`,
-      [usuario_id]
-    );
-
-    res.json({ insignias });
-  } catch (error) {
-    console.error('Error obteniendo insignias:', error);
-    res.status(500).json({ message: 'Error al obtener insignias' });
-  }
-});*/
