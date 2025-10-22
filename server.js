@@ -91,7 +91,7 @@ app.use('/api', chat);
 app.use('/api', promociones);
 app.use('/api/pago', mercadopago);
 app.use('/api/direcciones', direcciones);
-app.use('/api', insignias);
+app.use('/api/insignias', insignias);
 
 
 // Iniciar el servidor
