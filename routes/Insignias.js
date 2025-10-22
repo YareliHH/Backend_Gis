@@ -78,7 +78,7 @@ router.post("/crear", upload.single("icono"), async (req, res) => {
         console.error("Error en uploadToCloudinary:", uploadError);
         return res.status(500).json({ 
           message: "Error al subir la imagen",
-          error: true
+          error: true|
         });
       }
     }
