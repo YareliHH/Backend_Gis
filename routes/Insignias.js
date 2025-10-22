@@ -6,7 +6,17 @@ const db = require('../Config/db');
 
 // Multer almacenamiento en memoria
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos de imagen'), false);
+    }
+  }
+});
 
 // Configuración de Cloudinary
 cloudinary.config({
@@ -18,118 +28,271 @@ cloudinary.config({
 // ☁️ Subida a Cloudinary
 const uploadToCloudinary = async (fileBuffer, folder) => {
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      { folder, resource_type: "image" },
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { 
+        folder, 
+        resource_type: "image",
+        transformation: [
+          { width: 500, height: 500, crop: "limit" },
+          { quality: "auto" }
+        ]
+      },
       (error, result) => {
-        if (error) reject(error);
-        else resolve(result.secure_url);
+        if (error) {
+          console.error("Error al subir a Cloudinary:", error);
+          reject(new Error("Error al subir la imagen"));
+        } else {
+          resolve(result.secure_url);
+        }
       }
-    ).end(fileBuffer);
+    );
+    uploadStream.end(fileBuffer);
   });
 };
 
-// 1. Crear insignia
-router.post("/crear", upload.fields([{ name: "icono" }]), async (req, res) => {
-  const { nombre, descripcion, tipo, regla } = req.body;
-
-  if (!nombre || !tipo || !regla) {
-    return res.status(400).json({ message: "Nombre, tipo y regla son obligatorios." });
-  }
-
+// 1. CREAR INSIGNIA
+router.post("/crear", upload.single("icono"), async (req, res) => {
   try {
-    const icono_url = req.files?.icono
-      ? await uploadToCloudinary(req.files.icono[0].buffer, "insignias")
-      : "";
+    const { nombre, descripcion, tipo, regla } = req.body;
+
+    if (!nombre || !tipo || !regla) {
+      return res.status(400).json({ 
+        message: "Nombre, tipo y regla son obligatorios.",
+        error: true
+      });
+    }
+
+    if (nombre.length > 255) {
+      return res.status(400).json({ 
+        message: "El nombre no puede exceder 255 caracteres",
+        error: true
+      });
+    }
+
+    let icono_url = "";
+    
+    if (req.file) {
+      try {
+        icono_url = await uploadToCloudinary(req.file.buffer, "insignias");
+      } catch (uploadError) {
+        console.error("Error en uploadToCloudinary:", uploadError);
+        return res.status(500).json({ 
+          message: "Error al subir la imagen",
+          error: true
+        });
+      }
+    }
 
     const [result] = await db.execute(
-      "INSERT INTO insignias (nombre, descripcion, icono_url, tipo, regla) VALUES (?, ?, ?, ?, ?)",
-      [nombre, descripcion, icono_url, tipo, regla]
+      "INSERT INTO insignias (nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion) VALUES (?, ?, ?, ?, ?, 1, NOW())",
+      [nombre.trim(), descripcion?.trim() || "", icono_url, tipo.trim(), regla.trim()]
     );
 
-    res.status(201).json({ message: "Insignia creada exitosamente", id: result.insertId });
+    res.status(201).json({ 
+      message: "Insignia creada exitosamente", 
+      id: result.insertId,
+      success: true
+    });
   } catch (error) {
     console.error("Error al crear insignia:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
+    res.status(500).json({ 
+      message: error.message || "Error interno del servidor",
+      error: true
+    });
   }
 });
 
-// 2. Obtener todas las insignias
+// 2. OBTENER TODAS LAS INSIGNIAS
 router.get("/obtener", async (req, res) => {
   try {
-    const [rows] = await db.execute("SELECT * FROM insignias");
+    const [rows] = await db.execute(
+      "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias ORDER BY fecha_creacion DESC"
+    );
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener insignias:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
+    res.status(500).json({ 
+      message: "Error interno del servidor",
+      error: true
+    });
   }
 });
 
-// 3. Obtener insignia por ID
+// 3. OBTENER INSIGNIA POR ID
 router.get("/insignias/:id", async (req, res) => {
   try {
-    const [rows] = await db.execute("SELECT * FROM insignias WHERE id = ?", [req.params.id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ message: "Insignia no encontrada." });
+    const { id } = req.params;
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ 
+        message: "ID inválido",
+        error: true
+      });
     }
+
+    const [rows] = await db.execute(
+      "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias WHERE id = ?", 
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        message: "Insignia no encontrada.",
+        error: true
+      });
+    }
+
     res.json(rows[0]);
   } catch (error) {
     console.error("Error al obtener insignia por ID:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
+    res.status(500).json({ 
+      message: "Error interno del servidor",
+      error: true
+    });
   }
 });
 
-// 4. Actualizar insignia
-router.put("/insignias/:id", upload.fields([{ name: "icono" }]), async (req, res) => {
-  const { id } = req.params;
-  const { nombre, descripcion, tipo, regla } = req.body;
-
-  if (!nombre || !tipo || !regla) {
-    return res.status(400).json({ message: "Nombre, tipo y regla son obligatorios." });
-  }
-
+// 4. ACTUALIZAR INSIGNIA
+router.put("/insignias/:id", upload.single("icono"), async (req, res) => {
   try {
-    let icono_url;
+    const { id } = req.params;
+    const { nombre, descripcion, tipo, regla } = req.body;
 
-    if (req.files?.icono) {
-      icono_url = await uploadToCloudinary(req.files.icono[0].buffer, "insignias");
-    } else {
-      const [rows] = await db.execute("SELECT icono_url FROM insignias WHERE id = ?", [id]);
-      if (rows.length === 0) {
-        return res.status(404).json({ message: "Insignia no encontrada." });
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ 
+        message: "ID inválido",
+        error: true
+      });
+    }
+
+    if (!nombre || !tipo || !regla) {
+      return res.status(400).json({ 
+        message: "Nombre, tipo y regla son obligatorios.",
+        error: true
+      });
+    }
+
+    if (nombre.length > 255) {
+      return res.status(400).json({ 
+        message: "El nombre no puede exceder 255 caracteres",
+        error: true
+      });
+    }
+
+    const [existing] = await db.execute("SELECT icono_url FROM insignias WHERE id = ?", [id]);
+    
+    if (existing.length === 0) {
+      return res.status(404).json({ 
+        message: "Insignia no encontrada.",
+        error: true
+      });
+    }
+
+    let icono_url = existing[0].icono_url || "";
+
+    if (req.file) {
+      try {
+        icono_url = await uploadToCloudinary(req.file.buffer, "insignias");
+      } catch (uploadError) {
+        console.error("Error en uploadToCloudinary:", uploadError);
+        return res.status(500).json({ 
+          message: "Error al subir la nueva imagen",
+          error: true
+        });
       }
-      icono_url = rows[0].icono_url || "";
     }
 
     const [result] = await db.execute(
       "UPDATE insignias SET nombre = ?, descripcion = ?, icono_url = ?, tipo = ?, regla = ? WHERE id = ?",
-      [nombre, descripcion, icono_url, tipo, regla, id]
+      [nombre.trim(), descripcion?.trim() || "", icono_url, tipo.trim(), regla.trim(), id]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Insignia no encontrada." });
+      return res.status(404).json({ 
+        message: "Insignia no encontrada.",
+        error: true
+      });
     }
 
-    res.json({ message: "Insignia actualizada exitosamente" });
+    res.json({ 
+      message: "Insignia actualizada exitosamente",
+      success: true
+    });
   } catch (error) {
     console.error("Error al actualizar insignia:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
+    res.status(500).json({ 
+      message: error.message || "Error interno del servidor",
+      error: true
+    });
   }
 });
 
-// 5. Eliminar insignia
+// 5. ELIMINAR INSIGNIA
 router.delete("/insignias/:id", async (req, res) => {
   try {
-    const [result] = await db.execute("DELETE FROM insignias WHERE id = ?", [req.params.id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Insignia no encontrada." });
+    const { id } = req.params;
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ 
+        message: "ID inválido",
+        error: true
+      });
     }
-    res.json({ message: "Insignia eliminada exitosamente" });
+
+    // Verificar si hay usuarios con esta insignia
+    const [usuariosConInsignia] = await db.execute(
+      "SELECT COUNT(*) as count FROM usuarios_insignias WHERE insignia_id = ?",
+      [id]
+    );
+
+    if (usuariosConInsignia[0].count > 0) {
+      return res.status(400).json({ 
+        message: `No se puede eliminar. Hay ${usuariosConInsignia[0].count} usuario(s) con esta insignia.`,
+        error: true
+      });
+    }
+
+    const [result] = await db.execute("DELETE FROM insignias WHERE id = ?", [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        message: "Insignia no encontrada.",
+        error: true
+      });
+    }
+
+    res.json({ 
+      message: "Insignia eliminada exitosamente",
+      success: true
+    });
   } catch (error) {
     console.error("Error al eliminar insignia:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
+    res.status(500).json({ 
+      message: "Error interno del servidor",
+      error: true
+    });
   }
+});
+
+// Manejo de errores de multer
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ 
+        message: 'El archivo es demasiado grande. Máximo 5MB.',
+        error: true
+      });
+    }
+  }
+  
+  if (error.message === 'Solo se permiten archivos de imagen') {
+    return res.status(400).json({ 
+      message: error.message,
+      error: true
+    });
+  }
+
+  next(error);
 });
 
 module.exports = router;
-
-
