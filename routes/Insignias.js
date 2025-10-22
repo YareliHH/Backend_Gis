@@ -83,8 +83,9 @@ router.post("/crear", upload.single("icono"), async (req, res) => {
       }
     }
 
+    // CORREGIDO: Usar 'fecha' en lugar de 'fecha_creacion'
     const [result] = await db.execute(
-      "INSERT INTO insignias (nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion) VALUES (?, ?, ?, ?, ?, 1, NOW())",
+      "INSERT INTO insignias (nombre, descripcion, icono_url, tipo, regla, activa, fecha) VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)",
       [nombre.trim(), descripcion?.trim() || "", icono_url, tipo.trim(), regla.trim()]
     );
 
@@ -105,8 +106,9 @@ router.post("/crear", upload.single("icono"), async (req, res) => {
 // 2. OBTENER TODAS LAS INSIGNIAS
 router.get("/obtener", async (req, res) => {
   try {
+    // CORREGIDO: Usar 'fecha' en lugar de 'fecha_creacion'
     const [rows] = await db.execute(
-      "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias ORDER BY fecha_creacion DESC"
+      "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha FROM insignias ORDER BY fecha DESC"
     );
     res.json(rows);
   } catch (error) {
@@ -130,8 +132,9 @@ router.get("/insignias/:id", async (req, res) => {
       });
     }
 
+    // CORREGIDO: Usar 'fecha' en lugar de 'fecha_creacion'
     const [rows] = await db.execute(
-      "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias WHERE id = ?", 
+      "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha FROM insignias WHERE id = ?", 
       [id]
     );
 
