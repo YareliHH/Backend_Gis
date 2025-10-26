@@ -84,7 +84,7 @@ router.post("/crear", upload.single("icono"), async (req, res) => {
     }
 
     // CORREGIDO: Usar 'fecha' en lugar de 'fecha_creacion'
-    const [result] = await db.execute(
+    const [result] = await db.query(
       "INSERT INTO insignias (nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion) VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)",
       [nombre.trim(), descripcion?.trim() || "", icono_url, tipo.trim(), regla.trim()]
     );
@@ -103,19 +103,22 @@ router.post("/crear", upload.single("icono"), async (req, res) => {
   }
 });
 
-// 🔹 Obtener todas las insignias
-router.get("/obtener", (req, res) => {
-  const sql = "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias ORDER BY fecha_creacion DESC";
-  
-  db.query(sql, (err, results) => {
-    if (err) {
-      console.error("Error al obtener insignias:", err);
-      return res.status(500).json({ message: "Error al obtener insignias" });
-    }
-    res.json(results);
-  });
+// 2. OBTENER TODAS LAS INSIGNIAS
+router.get("/obtener", async (req, res) => {
+  try {
+    // CORREGIDO: Usar 'fecha' en lugar de 'fecha_creacion'
+    const [rows] = await db.query(
+      "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias ORDER BY fecha_creacion DESC"
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al obtener insignias:", error);
+    res.status(500).json({ 
+      message: "Error interno del servidor",
+      error: true
+    });
+  }
 });
-
 
 // 3. OBTENER INSIGNIA POR ID
 router.get("/insignias/:id", async (req, res) => {
@@ -130,7 +133,7 @@ router.get("/insignias/:id", async (req, res) => {
     }
 
     // CORREGIDO: Usar 'fecha' en lugar de 'fecha_creacion'
-    const [rows] = await db.execute(
+    const [rows] = await db.query(
       "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias WHERE id = ?", 
       [id]
     );
@@ -179,7 +182,7 @@ router.put("/insignias/:id", upload.single("icono"), async (req, res) => {
       });
     }
 
-    const [existing] = await db.execute("SELECT icono_url FROM insignias WHERE id = ?", [id]);
+    const [existing] = await db.query("SELECT icono_url FROM insignias WHERE id = ?", [id]);
     
     if (existing.length === 0) {
       return res.status(404).json({ 
@@ -202,7 +205,7 @@ router.put("/insignias/:id", upload.single("icono"), async (req, res) => {
       }
     }
 
-    const [result] = await db.execute(
+    const [result] = await db.query(
       "UPDATE insignias SET nombre = ?, descripcion = ?, icono_url = ?, tipo = ?, regla = ? WHERE id = ?",
       [nombre.trim(), descripcion?.trim() || "", icono_url, tipo.trim(), regla.trim(), id]
     );
@@ -240,7 +243,7 @@ router.delete("/insignias/:id", async (req, res) => {
     }
 
     // Verificar si hay usuarios con esta insignia
-    const [usuariosConInsignia] = await db.execute(
+    const [usuariosConInsignia] = await db.query(
       "SELECT COUNT(*) as count FROM usuarios_insignias WHERE insignia_id = ?",
       [id]
     );
@@ -252,7 +255,7 @@ router.delete("/insignias/:id", async (req, res) => {
       });
     }
 
-    const [result] = await db.execute("DELETE FROM insignias WHERE id = ?", [id]);
+    const [result] = await db.query("DELETE FROM insignias WHERE id = ?", [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ 
