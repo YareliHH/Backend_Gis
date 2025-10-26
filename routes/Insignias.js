@@ -103,22 +103,19 @@ router.post("/crear", upload.single("icono"), async (req, res) => {
   }
 });
 
-// 2. OBTENER TODAS LAS INSIGNIAS
-router.get("/obtener", async (req, res) => {
-  try {
-    // CORREGIDO: Usar 'fecha' en lugar de 'fecha_creacion'
-    const [rows] = await db.query(
-      "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias ORDER BY fecha_creacion DESC"
-    );
-    res.json(rows);
-  } catch (error) {
-    console.error("Error al obtener insignias:", error);
-    res.status(500).json({ 
-      message: "Error interno del servidor",
-      error: true
-    });
-  }
+// 🔹 Obtener todas las insignias
+router.get("/obtener", (req, res) => {
+  const sql = "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias ORDER BY fecha_creacion DESC";
+  
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("Error al obtener insignias:", err);
+      return res.status(500).json({ message: "Error al obtener insignias" });
+    }
+    res.json(results);
+  });
 });
+
 
 // 3. OBTENER INSIGNIA POR ID
 router.get("/insignias/:id", async (req, res) => {
