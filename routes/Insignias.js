@@ -107,7 +107,7 @@ router.post("/crear", upload.single("icono"), async (req, res) => {
 router.get("/obtener", async (req, res) => {
   try {
     // CORREGIDO: Usar 'fecha' en lugar de 'fecha_creacion'
-    const [rows] = await db.execute(
+    const [rows] = await db.query(
       "SELECT id, nombre, descripcion, icono_url, tipo, regla, activa, fecha_creacion FROM insignias ORDER BY fecha_creacion DESC"
     );
     res.json(rows);
