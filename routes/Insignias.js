@@ -119,8 +119,6 @@ router.get("/obtener",  (req, res) => {
       }
 
     );
-
- 
 });
 
 // 3. OBTENER INSIGNIA POR ID
