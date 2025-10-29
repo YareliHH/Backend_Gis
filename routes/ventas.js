@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../Config/db');
 const mercadopago = require('mercadopago');
 
-
+// ✅ Verificar el estado del pago
 router.get('/verificar-pago', async (req, res) => {
   const { collection_status, external_reference } = req.query;
   const venta_id = parseInt(external_reference);
@@ -40,7 +40,8 @@ router.get('/verificar-pago', async (req, res) => {
   }
 });
 
-router.get('/historial/:venta_id', verifyToken, async (req, res) => {
+// 📜 Obtener historial de una venta
+router.get('/historial/:venta_id', async (req, res) => {
   const { venta_id } = req.params;
 
   try {
