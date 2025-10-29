@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../Config/db');
-const verifyToken = require('../Middleware/auth');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
 //  Configura tu Access Token de MercadoPago
