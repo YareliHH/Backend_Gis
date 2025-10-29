@@ -14,7 +14,7 @@ router.get('/verificar-pago', async (req, res) => {
   const venta_id = parseInt(external_reference);
 
   if (!venta_id || !collection_status) {
-    return res.redirect('https://gisliveboutique.com/pago-fallido');
+    return res.redirect('https://gisliveboutique.com/cliente/pago-fallido');
   }
 
   try {
@@ -32,16 +32,16 @@ router.get('/verificar-pago', async (req, res) => {
         [venta_id, 'pendiente', 'pagado', 'MercadoPago']
       );
 
-      return res.redirect('https://gisliveboutique.com/pago-exitoso');
+      return res.redirect('https://gisliveboutique.com/cliente/pago-exitoso');
 
     } else if (collection_status === 'in_process') {
-      return res.redirect('https://gisliveboutique.com/pago-pendiente');
+      return res.redirect('https://gisliveboutique.com/cliente/pago-pendiente');
     } else {
-      return res.redirect('https://gisliveboutique.com/pago-fallido');
+      return res.redirect('https://gisliveboutique.com/cliente/pago-fallido');
     }
   } catch (error) {
     console.error('❌ Error en /verificar-pago:', error);
-    return res.redirect('https://gisliveboutique.com/pago-fallido');
+    return res.redirect('https://gisliveboutique.com/cliente/pago-fallido');
   }
 });
 
