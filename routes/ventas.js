@@ -1,74 +1,65 @@
-// backend/routes/ventas.js
 const express = require('express');
 const router = express.Router();
-const db = require("../Config/db");
+const db = require('../Config/db');
+const mercadopago = require('mercadopago');
+const verifyToken = require('../Middleware/verifyToken');
 
-// Obtener una venta por ID con sus detalles
-router.get('/:id', (req, res) => {
-  const { id } = req.params;
-
-  const queryVenta = "SELECT * FROM ventas WHERE id = ?";
-  const queryDetalles = "SELECT * FROM detalles_venta WHERE venta_id = ?";
-
-  db.query(queryVenta, [id], (err, ventaResult) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (ventaResult.length === 0) return res.status(404).json({ error: "Venta no encontrada" });
-
-    const venta = ventaResult[0];
-    db.query(queryDetalles, [id], (errDetalles, detallesResult) => {
-      if (errDetalles) return res.status(500).json({ error: errDetalles.message });
-
-      venta.detalles = detallesResult;
-      res.json(venta);
-    });
-  });
+// ⚙️ Configura MercadoPago con tu token
+mercadopago.configure({
+  access_token: process.env.MERCADOPAGO_TOKEN
 });
 
-// Registrar una nueva venta con sus detalles
-router.post('/registrar', (req, res) => {
-  const { usuario_id, total, metodo_pago_id, estado, direccion_envio, estado_envio, detalles } = req.body;
+router.get('/verificar-pago', async (req, res) => {
+  const { collection_status, external_reference } = req.query;
+  const venta_id = parseInt(external_reference);
 
-  const venta = {
-    usuario_id,
-    total,
-    metodo_pago_id,
-    estado,
-    direccion_envio,
-    estado_envio
-  };
+  if (!venta_id || !collection_status) {
+    return res.redirect('https://gisliveboutique.com/pago-fallido');
+  }
 
-  const insertVenta = "INSERT INTO ventas SET ?";
-  db.query(insertVenta, venta, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    if (collection_status === 'approved') {
+      // ✅ Actualizar estado a pagado
+      await db.query(
+        `UPDATE ventas SET estado = 'pagado' WHERE id = ?`,
+        [venta_id]
+      );
 
-    const ventaId = result.insertId;
-    const detallesData = detalles.map(item => [ventaId, item.cantidad, item.precio_unitario, item.producto_nombre]);
-    const insertDetalles = "INSERT INTO detalles_venta (venta_id, cantidad, precio_unitario, producto_nombre) VALUES ?";
+      // 📜 Registrar historial
+      await db.query(
+        `INSERT INTO historial_ventas (venta_id, estado_anterior, estado_nuevo, cambio_por, fecha) 
+         VALUES (?, ?, ?, ?, NOW())`,
+        [venta_id, 'pendiente', 'pagado', 'MercadoPago']
+      );
 
-    db.query(insertDetalles, [detallesData], (err2) => {
-      if (err2) return res.status(500).json({ error: err2.message });
+      return res.redirect('https://gisliveboutique.com/pago-exitoso');
 
-      res.json({ mensaje: "Venta registrada con detalles", venta_id: ventaId });
-    });
-  });
+    } else if (collection_status === 'in_process') {
+      return res.redirect('https://gisliveboutique.com/pago-pendiente');
+    } else {
+      return res.redirect('https://gisliveboutique.com/pago-fallido');
+    }
+  } catch (error) {
+    console.error('❌ Error en /verificar-pago:', error);
+    return res.redirect('https://gisliveboutique.com/pago-fallido');
+  }
 });
 
-// Eliminar una venta y sus detalles
-router.delete('/eliminar/:id', (req, res) => {
-  const { id } = req.params;
+router.get('/historial/:venta_id', verifyToken, async (req, res) => {
+  const { venta_id } = req.params;
 
-  const deleteDetalles = "DELETE FROM detalles_venta WHERE venta_id = ?";
-  const deleteVenta = "DELETE FROM ventas WHERE id = ?";
+  try {
+    const [historial] = await db.query(
+      `SELECT estado_anterior, estado_nuevo, cambio_por, fecha
+       FROM historial_ventas WHERE venta_id = ? ORDER BY fecha DESC`,
+      [venta_id]
+    );
 
-  db.query(deleteDetalles, [id], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-
-    db.query(deleteVenta, [id], (err2) => {
-      if (err2) return res.status(500).json({ error: err2.message });
-
-      res.json({ mensaje: "Venta y detalles eliminados" });
-    });
-  });
+    res.json(historial);
+  } catch (error) {
+    console.error('Error al obtener historial:', error);
+    res.status(500).json({ message: 'Error al obtener historial de venta' });
+  }
 });
 
 module.exports = router;

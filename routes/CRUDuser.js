@@ -483,5 +483,29 @@ router.post("/cambiar-password", (req, res) => {
     });
   });
 });
+router.get("/userinsignias", (req, res) => {
+  const token = req.cookies.auth_cookie;
+
+  if (!token) return res.status(401).json({ error: "No autenticado" });
+
+  const findUserQuery = "SELECT id FROM usuarios WHERE cookie = ?";
+  connection.query(findUserQuery, [token], (err, results) => {
+    if (err) return res.status(500).json({ error: "Error al buscar usuario" });
+    if (results.length === 0) return res.status(401).json({ error: "Usuario no encontrado" });
+
+    const usuario_id = results[0].id;
+    const queryInsignias = `
+      SELECT i.id, i.nombre, i.descripcion, i.icono_url
+      FROM usuarios_insignias ui
+      JOIN insignias i ON ui.insignia_id = i.id
+      WHERE ui.usuario_id = ?
+    `;
+
+    connection.query(queryInsignias, [usuario_id], (err, insigniasResult) => {
+      if (err) return res.status(500).json({ error: "Error al obtener insignias" });
+      res.json({ insignias: insigniasResult });
+    });
+  });
+});
 
 module.exports = router;
