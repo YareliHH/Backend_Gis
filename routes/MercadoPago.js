@@ -13,7 +13,7 @@ const client = new MercadoPagoConfig({
 const APP_URL = 'https://backend-gis-1.onrender.com';
 
 // 🛒 Crear compra (con MercadoPago incluido)
-router.post('/crear_preferencia', verifyToken, async (req, res) => {
+router.post('/comprar', verifyToken, async (req, res) => {
   const { productos, total, metodoPago, direccionEnvio, costoEnvio } = req.body;
   const usuario_id = req.usuario.id;
 

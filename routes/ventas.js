@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../Config/db');
-
 const mercadopago = require('mercadopago');
 const verifyToken = require('../Middleware/verifyToken');
 
