@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../Config/db');
-const verifyToken = require('../Middleware/auth');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
 // 🔐 Configura tu Access Token de MercadoPago
@@ -13,7 +12,7 @@ const client = new MercadoPagoConfig({
 const APP_URL = 'https://backend-gis-1.onrender.com';
 
 // 🛒 Crear compra (solo con MercadoPago)
-router.post('/crear_preferencia', verifyToken, async (req, res) => {
+router.post('/crear_preferencia', async (req, res) => {
   const { productos, total, metodoPago, direccionEnvio, costoEnvio } = req.body;
   const usuario_id = req.usuario.id;
 
