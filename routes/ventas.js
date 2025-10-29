@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../Config/db');
 const mercadopago = require('mercadopago');
-const verifyToken = require('../Middleware/verifyToken');
 
 // ⚙️ Configura MercadoPago con tu token
 mercadopago.configure({
@@ -45,7 +44,7 @@ router.get('/verificar-pago', async (req, res) => {
   }
 });
 
-router.get('/historial/:venta_id', verifyToken, async (req, res) => {
+router.get('/historial/:venta_id', async (req, res) => {
   const { venta_id } = req.params;
 
   try {
