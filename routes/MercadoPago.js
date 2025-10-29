@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../Config/db');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
-// 🔐 Configura tu Access Token de MercadoPago
+//  Configura tu Access Token de MercadoPago
 const client = new MercadoPagoConfig({
   accessToken: 'APP_USR-4446643915013686-070920-66961f94b8401e2730fc918ee580146d-2543693813',
 });
@@ -13,7 +13,7 @@ const APP_URL = 'https://backend-gis-1.onrender.com';
 
 // 🛒 Crear compra (solo con MercadoPago)
 router.post('/crear_preferencia', async (req, res) => {
-  const { productos, total, metodoPago, direccionEnvio, costoEnvio, usuario_id } = req.body;
+  const { productos, total, metodoPago, direccionEnvio, costoEnvio } = req.body;
 
   if (!productos || productos.length === 0) {
     return res.status(400).json({ message: 'El carrito está vacío' });
