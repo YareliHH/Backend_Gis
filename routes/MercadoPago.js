@@ -88,9 +88,6 @@ async function otorgarInsigniasPorCompra(usuario_id) {
   }
 }
 
-
-
-
 // RUTA: COMPARTIR PRODUCTOS 
 router.post("/compartir", async (req, res) => {
   const { usuario_id, producto_id } = req.body;
@@ -165,7 +162,7 @@ router.post("/comprar", async (req, res) => {
     ]);
 
     await connection.query(
-      `INSERT INTO detalles_ventas 
+      `INSERT INTO detalles_venta
        (venta_id, cantidad, precio_unitario, id_producto)
        VALUES ?`,
       [valoresProductos]
