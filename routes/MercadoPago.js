@@ -11,9 +11,7 @@ mercadopago.configure({
   access_token: "APP_USR-4446643915013686-070920-66961f94b8401e2730fc918ee580146d-2543693813",
 });
 
-// ===============================
-// FUNCIÓN: OTORGAR INSIGNIAS
-// ===============================
+
 async function otorgarInsigniasPorCompra(usuario_id) {
   const connection = await db.getConnection();
 
@@ -178,7 +176,7 @@ router.get("/verificar-pago", async (req, res) => {
   const venta_id = Number(external_reference);
 
   if (!venta_id || !collection_status) {
-    return res.redirect("https://backend-gis-1.onrender.com/pago-fallido");
+    return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-fallido");
   }
 
   try {
@@ -201,18 +199,18 @@ router.get("/verificar-pago", async (req, res) => {
 
       await otorgarInsigniasPorCompra(venta.usuario_id);
 
-      return res.redirect("https://backend-gis-1.onrender.com/pago-exitoso");
+      return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-exitoso");
     }
 
     if (collection_status === "in_process") {
-      return res.redirect("https://backend-gis-1.onrender.com/pago-pendiente");
+      return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-pendiente");
     }
 
-    return res.redirect("https://backend-gis-1.onrender.com/pago-fallido");
+    return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-fallido");
 
   } catch (error) {
     console.error("❌ Error verificando pago:", error);
-    return res.redirect("https://backend-gis-1.onrender.com/pago-fallido");
+    return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-fallido");
   }
 });
 
