@@ -128,10 +128,8 @@ router.post("/compartir", async (req, res) => {
 });
 
 
+// RUTA: REALIZAR COMPRA (Mercado Pago)
 
-// =============================================================
-//                RUTA: REALIZAR COMPRA (Mercado Pago)
-// =============================================================
 router.post("/comprar", async (req, res) => {
   const { productos, total, metodoPago, direccionEnvio, usuario_id } = req.body;
 
@@ -161,14 +159,14 @@ router.post("/comprar", async (req, res) => {
 
     const valoresProductos = productos.map((p) => [
       venta_id,
-      p.producto_id,
+      p.id_producto,
       p.cantidad,
       p.precio_venta,
     ]);
 
     await connection.query(
       `INSERT INTO detalles_ventas 
-       (venta_id, producto_id, cantidad, precio_unitario)
+       (venta_id, cantidad, precio_unitario, id_producto)
        VALUES ?`,
       [valoresProductos]
     );
@@ -218,11 +216,7 @@ router.post("/comprar", async (req, res) => {
   }
 });
 
-
-
-// =============================================================
-//              RUTA: VERIFICAR PAGO MERCADO PAGO
-// =============================================================
+// RUTA: VERIFICAR PAGO MERCADO PAGO
 router.get("/verificar-pago", async (req, res) => {
   const { collection_status, external_reference } = req.query;
   const venta_id = Number(external_reference);
