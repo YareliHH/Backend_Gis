@@ -1,4 +1,4 @@
-// backend/routes/ventas.js
+// backend/routes/MercadoPago.js
 const express = require("express");
 const router = express.Router();
 const db = require("../Config/db");
@@ -127,7 +127,7 @@ router.post("/compartir", async (req, res) => {
 
 // RUTA: REALIZAR COMPRA (Mercado Pago)
 
-router.post("/comprar", async (req, res) => {
+router.post("/crear_preferencia", async (req, res) => {
   const { productos, total, metodoPago, direccionEnvio, usuario_id } = req.body;
 
   if (!usuario_id) {
