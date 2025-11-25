@@ -183,9 +183,9 @@ router.post("/comprar", async (req, res) => {
           currency_id: "MXN",
         })),
         back_urls: {
-          success: "https://backend-gis-1.onrender.com/cliente/verificar-pago",
-          failure: "https://backend-gis-1.onrender.com/cliente/verificar-pago",
-          pending: "https://backend-gis-1.onrender.com/cliente/verificar-pago",
+          success: "https://gisliveboutique.com/cliente/verificar-pago",
+          failure: "https://gisliveboutique.com/cliente/verificar-pago",
+          pending: "https://gisliveboutique.com/cliente/verificar-pago",
         },
         auto_return: "approved",
         external_reference: venta_id.toString(),
@@ -219,7 +219,7 @@ router.get("/verificar-pago", async (req, res) => {
   const venta_id = Number(external_reference);
 
   if (!venta_id || !collection_status) {
-    return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-fallido");
+    return res.redirect("https://gisliveboutique.com/cliente/pago-fallido");
   }
 
   try {
@@ -233,18 +233,18 @@ router.get("/verificar-pago", async (req, res) => {
 
       await otorgarInsigniasPorCompra(venta.usuario_id);
 
-      return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-exitoso");
+      return res.redirect("https://gisliveboutique.com/cliente/pago-exitoso");
     }
 
     if (collection_status === "in_process") {
-      return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-pendiente");
+      return res.redirect("https://gisliveboutique.com/cliente/pago-pendiente");
     }
 
-    return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-fallido");
+    return res.redirect("https://gisliveboutique.com/cliente/pago-fallido");
 
   } catch (error) {
     console.error("Error verificando pago:", error);
-    return res.redirect("https://backend-gis-1.onrender.com/cliente/pago-fallido");
+    return res.redirect("https://gisliveboutique.com/cliente/pago-fallido");
   }
 });
 
