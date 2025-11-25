@@ -41,10 +41,19 @@ app.use(cors({
   "http://localhost:3002" ,"https://gisliveboutique.com"
  ],
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   exposedHeaders: ["Set-Cookie"] 
 }));
+
+// Preflight obligatorio para Render
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  return res.sendStatus(200);
+});
 
 // Configuración básica de seguridad con Helmet
 app.use(helmet({
@@ -57,6 +66,9 @@ app.use(helmet({
       connectSrc: [
         "'self'",
         "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "https://gisliveboutique.com",
         "https://backend-gis-1.onrender.com"
       ]
     }
