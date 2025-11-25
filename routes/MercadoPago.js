@@ -213,11 +213,11 @@ router.get("/verificar-pago", async (req, res) => {
 
   try {
     if (collection_status === "approved") {
-      await db.query(`UPDATE ventas SET estado = 'pagado' WHERE id = ?`, [
+      await db.promise().query(`UPDATE ventas SET estado = 'pagado' WHERE id = ?`, [
         venta_id,
       ]);
 
-      const [[venta]] = await db.query(
+      const [[venta]] = await db.promise().query(
         `SELECT usuario_id FROM ventas WHERE id = ?`,
         [venta_id]
       );
