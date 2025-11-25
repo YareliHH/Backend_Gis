@@ -185,7 +185,7 @@ router.post("/crear_preferencia", async (req, res) => {
 
       return res.json({
         message: "Compra registrada, redirigiendo a Mercado Pago…",
-       init_point: preferenceResponse.body.init_point,
+       init_point: response.body.init_point,
       });
     }
 
