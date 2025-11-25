@@ -6,7 +6,8 @@ const mercadopago = require("mercadopago");
 
 // CONFIGURAR MERCADO PAGO
 mercadopago.configure({
-  access_token: "APP_USR-4446643915013686-070920-66961f94b8401e2730fc918ee580146d-2543693813",
+  access_token:
+    "APP_USR-4446643915013686-070920-66961f94b8401e2730fc918ee580146d-2543693813",
 });
 
 //   FUNCIÓN PARA OTORGAR INSIGNIAS (Compras + Embajador)
@@ -39,7 +40,7 @@ async function otorgarInsigniasPorCompra(usuario_id) {
        WHERE usuario_id = ?`,
       [usuario_id]
     );
-    const existentes = yaTiene.map(i => i.insignia_id);
+    const existentes = yaTiene.map((i) => i.insignia_id);
 
     const nuevas = [];
 
@@ -80,7 +81,6 @@ async function otorgarInsigniasPorCompra(usuario_id) {
       );
       console.log("🏅 Insignias otorgadas:", nuevas);
     }
-
   } catch (error) {
     console.error("Error otorgando insignias:", error);
   } finally {
@@ -88,7 +88,7 @@ async function otorgarInsigniasPorCompra(usuario_id) {
   }
 }
 
-// RUTA: COMPARTIR PRODUCTOS 
+// RUTA: COMPARTIR PRODUCTOS
 router.post("/compartir", async (req, res) => {
   const { usuario_id, producto_id } = req.body;
 
@@ -115,15 +115,13 @@ router.post("/compartir", async (req, res) => {
 
     return res.json({
       ok: true,
-      message: "Compartido registrado correctamente"
+      message: "Compartido registrado correctamente",
     });
-
   } catch (error) {
     console.error("❌ Error registrando compartir:", error);
     return res.status(500).json({ message: "Error al registrar el compartir" });
   }
 });
-
 
 // RUTA: REALIZAR COMPRA (Mercado Pago)
 
@@ -168,7 +166,9 @@ router.post("/comprar", async (req, res) => {
       [valoresProductos]
     );
 
-    await connection.query(`DELETE FROM carrito WHERE usuario_id = ?`, [usuario_id]);
+    await connection.query(`DELETE FROM carrito WHERE usuario_id = ?`, [
+      usuario_id,
+    ]);
 
     await connection.commit();
     connection.release();
@@ -183,9 +183,9 @@ router.post("/comprar", async (req, res) => {
           currency_id: "MXN",
         })),
         back_urls: {
-          success: "https://gisliveboutique.com/cliente/verificar-pago",
-          failure: "https://gisliveboutique.com/cliente/verificar-pago",
-          pending: "https://gisliveboutique.com/cliente/verificar-pago",
+          success: "https://backend-gis-1.onrender.com/api/pago/verificar-pago",
+          failure: "https://backend-gis-1.onrender.com/api/pago/verificar-pago",
+          pending: "https://backend-gis-1.onrender.com/api/pago/verificar-pago",
         },
         auto_return: "approved",
         external_reference: venta_id.toString(),
@@ -202,7 +202,6 @@ router.post("/comprar", async (req, res) => {
     await otorgarInsigniasPorCompra(usuario_id);
 
     return res.json({ message: "Compra realizada con éxito" });
-
   } catch (error) {
     if (connection) {
       await connection.rollback();
@@ -224,7 +223,9 @@ router.get("/verificar-pago", async (req, res) => {
 
   try {
     if (collection_status === "approved") {
-      await db.query(`UPDATE ventas SET estado = 'pagado' WHERE id = ?`, [venta_id]);
+      await db.query(`UPDATE ventas SET estado = 'pagado' WHERE id = ?`, [
+        venta_id,
+      ]);
 
       const [[venta]] = await db.query(
         `SELECT usuario_id FROM ventas WHERE id = ?`,
@@ -241,12 +242,10 @@ router.get("/verificar-pago", async (req, res) => {
     }
 
     return res.redirect("https://gisliveboutique.com/cliente/pago-fallido");
-
   } catch (error) {
     console.error("Error verificando pago:", error);
     return res.redirect("https://gisliveboutique.com/cliente/pago-fallido");
   }
 });
-
 
 module.exports = router;
