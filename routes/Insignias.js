@@ -299,4 +299,31 @@ router.use((error, req, res, next) => {
   next(error);
 });
 
+// RUTA: OBTENER INSIGNIAS DE UN USUARIO
+router.get("/insignias/:usuario_id", async (req, res) => {
+  const { usuario_id } = req.params;
+
+  if (!usuario_id) {
+    return res.status(400).json({ message: "Falta el usuario_id" });
+  }
+
+  try {
+    const [insignias] = await db.promise().query(
+      `SELECT i.id, i.nombre, i.descripcion, i.icono_url, i.regla, ui.fecha_asignacion
+       FROM usuarios_insignias ui
+       INNER JOIN insignias i ON ui.insignia_id = i.id
+       WHERE ui.usuario_id = ?`,
+      [usuario_id]
+    );
+
+    return res.json({ ok: true, insignias });
+  } catch (error) {
+    console.error("Error obteniendo insignias del usuario:", error);
+    return res
+      .status(500)
+      .json({ ok: false, message: "Error al obtener las insignias" });
+  }
+});
+
+
 module.exports = router;
