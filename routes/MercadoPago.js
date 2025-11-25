@@ -11,22 +11,21 @@ mercadopago.configure({
 
 //   FUNCIÓN PARA OTORGAR INSIGNIAS (Compras + Embajador)
 async function otorgarInsigniasPorCompra(usuario_id) {
-  const connection = await db.getConnection();
 
   try {
-    const [compras] = await connection.query(
+    const [compras] = await db.promise().query(
       `SELECT COUNT(*) AS total FROM ventas 
        WHERE usuario_id = ? AND estado = 'pagado'`,
       [usuario_id]
     );
     const totalCompras = compras[0].total || 0;
 
-    const [insignias] = await connection.query(
+    const [insignias] = await db.promise().query(
       `SELECT id, regla FROM insignias 
        WHERE tipo = 'logro' AND activa = 1`
     );
 
-    const [compartidos] = await connection.query(
+    const [compartidos] = await db.promise().query(
       `SELECT COUNT(*) AS total 
        FROM compartir_productos
        WHERE usuario_id = ?`,
@@ -34,7 +33,7 @@ async function otorgarInsigniasPorCompra(usuario_id) {
     );
     const totalCompartidos = compartidos[0].total || 0;
 
-    const [yaTiene] = await connection.query(
+    const [yaTiene] = await db.promise().query(
       `SELECT insignia_id FROM usuarios_insignias 
        WHERE usuario_id = ?`,
       [usuario_id]
@@ -100,9 +99,8 @@ router.post("/compartir", async (req, res) => {
   }
 
   try {
-    const connection = await db.getConnection();
-
-    await connection.query(
+   
+    await db.promise().query(
       `INSERT INTO compartir_productos (usuario_id, producto_id)
        VALUES (?, ?)`,
       [usuario_id, producto_id]
@@ -110,7 +108,7 @@ router.post("/compartir", async (req, res) => {
 
     await otorgarInsigniasPorCompra(usuario_id);
 
-    connection.release();
+
 
     return res.json({
       ok: true,
