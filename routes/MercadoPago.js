@@ -2,10 +2,12 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../Config/db");
-const mercadopago = require("mercadopago");
+const MercadoPago = require("mercadopago");
+const { Preference } = MercadoPago;
+
 
 // CONFIGURAR MERCADO PAGO
-mercadopago.configure({
+const client = new MercadoPago.MercadoPagoConfig({
   access_token:
     "APP_USR-4446643915013686-070920-66961f94b8401e2730fc918ee580146d-2543693813",
 });
@@ -175,7 +177,7 @@ router.post("/comprar", async (req, res) => {
 
     // MERCADO PAGO
     if (metodoPago === 4) {
-      const preference = {
+      const preferenceData = {
         items: productos.map((p) => ({
           title: p.nombre,
           quantity: p.cantidad,
@@ -191,11 +193,12 @@ router.post("/comprar", async (req, res) => {
         external_reference: venta_id.toString(),
       };
 
-      const mp = await mercadopago.preferences.create(preference);
+      const preference = new Preference(client);
+      const mp = await preference.create({ body: preferenceData });
 
       return res.json({
         message: "Compra registrada, redirigiendo a Mercado Pago…",
-        init_point: mp.body.init_point,
+        init_point: mp.init_point || mp.sandbox_init_point,
       });
     }
 
