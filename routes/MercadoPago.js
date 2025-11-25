@@ -135,11 +135,13 @@ router.post("/crear_preferencia", async (req, res) => {
     // Registrar la venta
     const estadoVenta = metodoPago === 4 ? "pendiente" : "pagado";
 
+    const direccionJSON = direccionEnvio ? JSON.stringify(direccionEnvio) : null;
+
     const [ventaResult] = await db
       .promise()
       .query(
         `INSERT INTO ventas (usuario_id, total, metodo_pago_id, direccion_envio, estado) VALUES (?, ?, ?, ?, ?)`,
-        [usuario_id, total, metodoPago, direccionEnvio || null, estadoVenta]
+        [usuario_id, total, metodoPago, direccionJSON || null, estadoVenta]
       );
 
     const venta_id = ventaResult.insertId;
