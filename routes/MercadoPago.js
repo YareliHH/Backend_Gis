@@ -3,10 +3,9 @@ const express = require("express");
 const router = express.Router();
 const db = require("../Config/db");
 const MercadoPago = require("mercadopago");
-const { Preference } = MercadoPago;
 
 // CONFIGURAR MERCADO PAGO
-const mp = new MercadoPago({
+MercadoPago.configure({
   access_token:
     "APP_USR-4446643915013686-070920-66961f94b8401e2730fc918ee580146d-2543693813",
 });
@@ -183,11 +182,11 @@ router.post("/crear_preferencia", async (req, res) => {
       };
 
       // Crear preferencia
-      const preferenceResponse = await mp.preferences.create(preferenceData);
+        const preferenceResponse = await MercadoPago.preferences.create(preferenceData);
 
       return res.json({
         message: "Compra registrada, redirigiendo a Mercado Pago…",
-        init_point: preferenceResponse.body.init_point,
+       init_point: preferenceResponse.body.init_point,
       });
     }
 
