@@ -300,7 +300,7 @@ router.use((error, req, res, next) => {
 });
 
 // RUTA: OBTENER INSIGNIAS DE UN USUARIO
-router.get("/insignias/:usuario_id", async (req, res) => {
+router.get("/:usuario_id", async (req, res) => {
   const { usuario_id } = req.params;
 
   if (!usuario_id) {
