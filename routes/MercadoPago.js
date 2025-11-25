@@ -148,9 +148,9 @@ router.post("/crear_preferencia", async (req, res) => {
 
     const valoresProductos = productos.map((p) => [
       venta_id,
-      p.id_producto,
       p.cantidad,
       p.precio_venta,
+      p.id_producto,
     ]);
 
     await db
