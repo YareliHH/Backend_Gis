@@ -6,12 +6,12 @@ const mercadopago = require("mercadopago");
 
 // CONFIGURAR MERCADO PAGO
 mercadopago.configure({
-  access_token: "APP_USR-4446643915013686-070920-66961f94b8401e2730fc918ee580146d-2543693813",
+  access_token:
+    "APP_USR-4446643915013686-070920-66961f94b8401e2730fc918ee580146d-2543693813",
 });
 
 //   FUNCIÓN PARA OTORGAR INSIGNIAS (Compras + Embajador)
 async function otorgarInsigniasPorCompra(usuario_id) {
-
   try {
     const [compras] = await db.promise().query(
       `SELECT COUNT(*) AS total FROM ventas 
@@ -73,16 +73,12 @@ async function otorgarInsigniasPorCompra(usuario_id) {
     }
 
     if (nuevas.length > 0) {
-      await connection.query(
-        `INSERT INTO usuarios_insignias (usuario_id, insignia_id) VALUES ?`,
-        [nuevas]
-      );
+      const sql = `INSERT INTO usuarios_insignias (usuario_id, insignia_id) VALUES ?`;
+      await db.promise().query(sql, [nuevas]);
       console.log("🏅 Insignias otorgadas:", nuevas);
     }
   } catch (error) {
     console.error("Error otorgando insignias:", error);
-  } finally {
-    connection.release();
   }
 }
 
@@ -99,7 +95,6 @@ router.post("/compartir", async (req, res) => {
   }
 
   try {
-   
     await db.promise().query(
       `INSERT INTO compartir_productos (usuario_id, producto_id)
        VALUES (?, ?)`,
@@ -107,8 +102,6 @@ router.post("/compartir", async (req, res) => {
     );
 
     await otorgarInsigniasPorCompra(usuario_id);
-
-
 
     return res.json({
       ok: true,
@@ -133,7 +126,9 @@ router.post("/crear_preferencia", async (req, res) => {
     // Registrar la venta
     const estadoVenta = metodoPago === 4 ? "pendiente" : "pagado";
 
-    const direccionJSON = direccionEnvio ? JSON.stringify(direccionEnvio) : null;
+    const direccionJSON = direccionEnvio
+      ? JSON.stringify(direccionEnvio)
+      : null;
 
     const [ventaResult] = await db
       .promise()
@@ -181,11 +176,11 @@ router.post("/crear_preferencia", async (req, res) => {
       };
 
       // Crear preferencia
-        const response = await mercadopago.preferences.create(preference);
+      const response = await mercadopago.preferences.create(preference);
 
       return res.json({
         message: "Compra registrada, redirigiendo a Mercado Pago…",
-       init_point: response.body.init_point,
+        init_point: response.body.init_point,
       });
     }
 
@@ -211,14 +206,13 @@ router.get("/verificar-pago", async (req, res) => {
 
   try {
     if (collection_status === "approved") {
-      await db.promise().query(`UPDATE ventas SET estado = 'pagado' WHERE id = ?`, [
-        venta_id,
-      ]);
+      await db
+        .promise()
+        .query(`UPDATE ventas SET estado = 'pagado' WHERE id = ?`, [venta_id]);
 
-      const [[venta]] = await db.promise().query(
-        `SELECT usuario_id FROM ventas WHERE id = ?`,
-        [venta_id]
-      );
+      const [[venta]] = await db
+        .promise()
+        .query(`SELECT usuario_id FROM ventas WHERE id = ?`, [venta_id]);
 
       await otorgarInsigniasPorCompra(venta.usuario_id);
 
