@@ -5,9 +5,8 @@ const db = require("../Config/db");
 const MercadoPago = require("mercadopago");
 const { Preference } = MercadoPago;
 
-
 // CONFIGURAR MERCADO PAGO
-const client = new MercadoPago.MercadoPagoConfig({
+const mp = new MercadoPago({
   access_token:
     "APP_USR-4446643915013686-070920-66961f94b8401e2730fc918ee580146d-2543693813",
 });
@@ -125,12 +124,12 @@ router.post("/compartir", async (req, res) => {
   }
 });
 
-
 // RUTA: CREAR PREFERENCIA
 router.post("/crear_preferencia", async (req, res) => {
   const { usuario_id, productos, total, metodoPago, direccionEnvio } = req.body;
 
-  if (!usuario_id) return res.status(400).json({ message: "Falta el usuario_id" });
+  if (!usuario_id)
+    return res.status(400).json({ message: "Falta el usuario_id" });
   if (!productos || productos.length === 0)
     return res.status(400).json({ message: "El carrito está vacío" });
 
@@ -147,15 +146,23 @@ router.post("/crear_preferencia", async (req, res) => {
 
     const venta_id = ventaResult.insertId;
 
-    const valoresProductos = productos.map((p) => [venta_id, p.id_producto, p.cantidad, p.precio_venta]);
+    const valoresProductos = productos.map((p) => [
+      venta_id,
+      p.id_producto,
+      p.cantidad,
+      p.precio_venta,
+    ]);
 
     await db
       .promise()
-      .query(`INSERT INTO detalles_venta (venta_id, cantidad, precio_unitario, id_producto) VALUES ?`, [
-        valoresProductos,
-      ]);
+      .query(
+        `INSERT INTO detalles_venta (venta_id, cantidad, precio_unitario, id_producto) VALUES ?`,
+        [valoresProductos]
+      );
 
-    await db.promise().query(`DELETE FROM carrito WHERE usuario_id = ?`, [usuario_id]);
+    await db
+      .promise()
+      .query(`DELETE FROM carrito WHERE usuario_id = ?`, [usuario_id]);
 
     // Crear preferencia Mercado Pago si aplica
     if (metodoPago === 4) {
@@ -175,11 +182,12 @@ router.post("/crear_preferencia", async (req, res) => {
         external_reference: venta_id.toString(),
       };
 
-      const mp = await MercadoPago.preferences.create(preferenceData);
+      // Crear preferencia
+      const preferenceResponse = await mp.preferences.create(preferenceData);
 
       return res.json({
         message: "Compra registrada, redirigiendo a Mercado Pago…",
-        init_point: mp.body.init_point || mp.body.sandbox_init_point,
+        init_point: preferenceResponse.body.init_point,
       });
     }
 
@@ -188,7 +196,9 @@ router.post("/crear_preferencia", async (req, res) => {
     return res.json({ message: "Compra realizada con éxito" });
   } catch (error) {
     console.error("❌ Error en crear preferencia:", error);
-    return res.status(500).json({ message: "Error procesando la compra", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Error procesando la compra", error: error.message });
   }
 });
 
